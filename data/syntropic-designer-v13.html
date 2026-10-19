@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Syntropic Planting Designer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#1c1a17;--sb:#141210;--acc:#c8b89a;--bdr:#2a2620;--dim:#8a7a6a;
+  --btn:#252220;--btn2:#332e2a;
+  --e:#9b7fd4;--h:#5a9b6a;--m:#5a8bb0;--l:#c8a050;--red:#c85a4a;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--acc);font-family:Georgia,'Times New Roman',serif}
+#app{display:flex;height:100vh;width:100vw}
+
+#sidebar{width:300px;min-width:300px;background:var(--sb);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+#sb-head{padding:13px 14px 10px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+#sb-head h1{font-size:12.5px;letter-spacing:.06em}
+#sb-head small{font-size:7.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);display:block;margin-top:2px}
+#sb-scroll{flex:1;overflow-y:auto;padding:10px 12px}
+#sb-scroll::-webkit-scrollbar{width:3px}#sb-scroll::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+
+#canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#toolbar{flex-shrink:0;background:var(--sb);border-bottom:1px solid var(--bdr);padding:6px 10px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#map-wrap{flex:1;position:relative;background:#0e0d0b}
+#map{position:absolute;inset:0}
+#statusbar{flex-shrink:0;background:var(--sb);border-top:1px solid var(--bdr);padding:3px 12px;display:flex;gap:14px;font-size:9px;color:var(--dim)}
+#statusbar span{white-space:nowrap}
+
+.sec{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:13px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--bdr)}
+.sec:first-child{margin-top:4px}
+
+.btn,.tbtn{display:inline-flex;align-items:center;gap:4px;padding:5px 9px;background:var(--btn);border:1px solid var(--bdr);color:var(--acc);font-family:Georgia,serif;font-size:10px;cursor:pointer;border-radius:2px;white-space:nowrap;transition:background .12s;user-select:none;line-height:1}
+.btn:hover,.tbtn:hover{background:var(--btn2)}
+.btn.active,.tbtn.active{background:var(--acc);color:var(--sb);border-color:var(--acc)}
+.btn:disabled,.tbtn:disabled{opacity:.35;cursor:default;pointer-events:none}
+.btn.sm{padding:3px 7px;font-size:9.5px}.btn.xs{padding:2px 5px;font-size:9px}
+.btn.pri{background:#2a402a;border-color:#3a5a3a;color:#9ad49a}.btn.pri:hover{background:#324832}
+.btn.dan{border-color:#6a3030;color:#d49a9a}.btn.dan:hover{background:#5a2828}
+.btn.wide{width:100%;justify-content:center;margin:3px 0}
+.brow{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0}
+.tsep{width:1px;height:20px;background:var(--bdr);flex-shrink:0}
+
+.slr{margin:5px 0}.slr label{display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px}.slr label em{color:var(--dim);font-style:normal}
+input[type=range]{width:100%;-webkit-appearance:none;background:var(--bdr);height:3px;border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--acc);cursor:pointer}
+input[type=number],input[type=text]{background:var(--btn);border:1px solid var(--bdr);color:var(--acc);font-family:Georgia,serif;font-size:10px;padding:3px 6px;border-radius:2px;width:100%;outline:none}
+input:focus{border-color:var(--acc)}
+select{background:var(--btn);border:1px solid var(--bdr);color:var(--acc);font-family:Georgia,serif;font-size:10px;padding:3px 5px;border-radius:2px;width:100%;outline:none;cursor:pointer}
+select option{background:var(--sb)}
+input[type=color]{width:28px;height:22px;padding:1px 2px;border:1px solid var(--bdr);background:var(--btn);border-radius:2px;cursor:pointer;vertical-align:middle}
+.fr{display:flex;gap:6px;align-items:center;margin:4px 0}
+.fr label{font-size:9.5px;color:var(--dim);min-width:66px;flex-shrink:0}.fr input,.fr select{flex:1}.fr input[type=color]{flex:none}
+
+.trow{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0}
+.tog{padding:3px 8px;border:1px solid var(--bdr);background:var(--btn);color:var(--dim);cursor:pointer;border-radius:2px;font-size:9.5px;font-family:Georgia,serif;user-select:none;transition:all .12s}
+.tog.on{color:var(--acc);border-color:var(--acc);background:var(--btn2)}
+.tog.e.on{color:var(--e);border-color:var(--e)}.tog.h.on{color:var(--h);border-color:var(--h)}.tog.m.on{color:var(--m);border-color:var(--m)}.tog.l.on{color:var(--l);border-color:var(--l)}
+
+#upzone{border:1.5px dashed var(--bdr);border-radius:3px;padding:11px 8px;text-align:center;cursor:pointer;color:var(--dim);font-size:9.5px;line-height:1.65;transition:all .15s;margin:4px 0}
+#upzone:hover,#upzone.drag{border-color:var(--acc);color:var(--acc)}#upzone.ok{border-color:var(--h);color:var(--h)}
+
+#splist{max-height:220px;overflow-y:auto;margin:3px 0}#splist::-webkit-scrollbar{width:3px}#splist::-webkit-scrollbar-thumb{background:var(--bdr)}
+.spi{display:flex;align-items:center;gap:7px;padding:4px 6px;cursor:pointer;border-radius:2px;border:1px solid transparent;margin:1px 0}
+.spi:hover{background:var(--btn)}.spi.sel{background:var(--btn2);border-color:var(--bdr)}
+.sp-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.sp-name{font-size:10.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-meta{font-size:8.5px;color:var(--dim);white-space:nowrap}
+.plot-item{display:flex;align-items:center;gap:6px;padding:4px 5px;border-radius:2px;border:1px solid transparent;margin:2px 0;background:var(--btn)}
+.plot-item.act{border-color:var(--acc);background:var(--btn2)}
+.plot-eye{cursor:pointer;font-size:11px;flex-shrink:0;width:16px;text-align:center;filter:grayscale(.3)}
+.plot-name{flex:1;font-size:10px;cursor:pointer;overflow:hidden;line-height:1.35}
+.plot-name em{color:var(--acc);font-style:italic;font-size:8.5px}
+.plot-meta{font-size:8px;color:var(--dim)}
+.plot-del{cursor:pointer;color:var(--dim);font-size:11px;flex-shrink:0;padding:0 3px}
+.plot-del:hover{color:var(--red)}
+.sp-can-edit{display:flex;align-items:center;gap:5px;padding:4px 6px 6px 24px;font-size:9px;color:var(--dim)}
+.sp-can-edit label{font-size:9px}
+.sp-can-edit input{width:54px;background:var(--bg);border:1px solid var(--bdr);color:var(--acc);border-radius:2px;padding:2px 4px;font-size:9.5px;font-family:inherit}
+.sp-strhdr{font-size:8px;letter-spacing:.08em;padding:3px 4px 1px;margin-top:4px}
+
+#add-sp-form{display:none;background:var(--btn);border:1px solid var(--bdr);border-radius:3px;padding:10px;margin-top:6px}
+
+#rowlist{max-height:200px;overflow-y:auto}#rowlist::-webkit-scrollbar{width:3px}#rowlist::-webkit-scrollbar-thumb{background:var(--bdr)}
+.ri{display:flex;align-items:center;gap:5px;background:var(--btn);border:1px solid var(--bdr);border-radius:2px;margin:2px 0;padding:3px 6px;font-size:9.5px}
+.ri.foc{border-color:var(--acc)}
+.ri-num{color:var(--dim);min-width:40px;cursor:pointer}
+.ri-pc{font-size:8.5px;color:var(--dim);flex:1;cursor:pointer}
+
+#summary{position:absolute;bottom:14px;right:14px;background:rgba(20,18,16,.94);border:1px solid var(--bdr);border-radius:3px;padding:10px 13px;font-size:9.5px;pointer-events:none;min-width:184px;z-index:600}
+#summary h3{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.sr{display:flex;justify-content:space-between;gap:10px;margin:2.5px 0}.sl{color:var(--dim)}.sv{color:var(--acc)}
+.sdiv{border:none;border-top:1px solid var(--bdr);margin:5px 0}
+
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center}
+.mo.open{display:flex}
+.mb{background:var(--sb);border:1px solid var(--bdr);border-radius:4px;padding:20px;max-width:90vw;max-height:90vh;overflow-y:auto;position:relative}
+.mb h2{font-size:13px;margin-bottom:11px}.mb p{font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55}
+.mc{position:absolute;top:14px;right:16px;cursor:pointer;color:var(--dim);font-size:20px;line-height:1;user-select:none}.mc:hover{color:var(--acc)}
+#pat-box{width:440px}
+.pstep{display:flex;align-items:center;gap:6px;background:var(--btn);border:1px solid var(--bdr);border-radius:2px;padding:5px 7px;margin:3px 0}
+.pdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}.psname{flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.tbtn.flash{animation:fl 1s ease}@keyframes fl{0%,100%{background:var(--btn)}50%{background:#4a6a4a}}
+
+/* Production dashboard */
+#dash{position:absolute;left:0;right:0;bottom:0;z-index:700;background:rgba(18,16,14,.97);border-top:1px solid var(--bdr);display:none;flex-direction:column;max-height:62%}
+#dash.open{display:flex}
+#dash.collapsed{max-height:none}
+#dash-head{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--bdr);flex-shrink:0;cursor:default}
+#dash-head h2{font-size:11px;letter-spacing:.06em;color:var(--acc)}
+#dash-head .sub{font-size:8.5px;color:var(--dim)}
+.dash-ctrls{margin-left:auto;display:flex;align-items:center;gap:8px}
+#dash-body{overflow-y:auto;padding:12px 14px 18px}
+#dash.collapsed #dash-body{display:none}
+#dash-body::-webkit-scrollbar{width:6px}#dash-body::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.kpi{flex:1;min-width:120px;background:var(--btn);border:1px solid var(--bdr);border-radius:3px;padding:9px 11px}
+.kpi .k-lbl{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.kpi .k-val{font-size:18px;color:var(--acc);line-height:1}
+.kpi .k-sub{font-size:8.5px;color:var(--dim);margin-top:3px}
+.dash-grid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.dash-chartwrap{flex:1;min-width:320px}
+#dash-chart{width:100%;display:block;border:1px solid var(--bdr);border-radius:3px;background:#0e0d0b}
+.dash-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:9px;color:var(--dim)}
+.dash-legend span{display:inline-flex;align-items:center;gap:4px}
+.dash-legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.dash-assump{min-width:200px;background:var(--btn);border:1px solid var(--bdr);border-radius:3px;padding:10px}
+.dash-assump h4{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.dash-tablewrap{margin-top:14px;overflow-x:auto}
+table.dash-tbl{border-collapse:collapse;width:100%;font-size:9.5px}
+table.dash-tbl th,table.dash-tbl td{border:1px solid var(--bdr);padding:3px 6px;text-align:right;white-space:nowrap}
+table.dash-tbl th{color:var(--dim);font-weight:normal;font-size:8.5px;letter-spacing:.05em;text-transform:uppercase;background:var(--sb)}
+table.dash-tbl td.l,table.dash-tbl th.l{text-align:left}
+table.dash-tbl td input{width:54px;font-size:9px;padding:1px 3px;text-align:right}
+.dash-note{font-size:8.5px;color:var(--dim);margin-top:10px;line-height:1.5;font-style:italic}
+.dash-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+
+/* Leaflet tweaks */
+.leaflet-container{background:#0e0d0b}
+.leaflet-control-attribution{font-size:8px!important;background:rgba(20,18,16,.6)!important;color:#8a7a6a!important}
+.leaflet-control-attribution a{color:#a89a86!important}
+.leaflet-bar a{background:#252220!important;color:#c8b89a!important;border-color:#2a2620!important}
+.leaflet-bar a:hover{background:#332e2a!important}
+
+@media print{
+  #sidebar,#toolbar,#statusbar,.mo,#dash,.leaflet-control-container{display:none!important}
+  #canvas-area{position:fixed;inset:0}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<aside id="sidebar">
+  <div id="sb-head"><h1>Syntropic Planting Designer</h1><small>Food-Forestry Codex · Map Edition</small></div>
+  <div id="sb-scroll">
+
+    <div class="sec">Plots</div>
+    <div class="fr"><label>Plot name</label><input type="text" id="proj-name" placeholder="Eden Canyon — Meadow" oninput="renamePlot(S.activePlotId,this.value)"></div>
+    <div id="plotlist"></div>
+    <div class="brow" style="margin-top:4px">
+      <button class="btn xs pri" onclick="newPlot()">＋ New Plot</button>
+      <button class="btn xs" onclick="setAllPlotsVis(true)">Show all</button>
+      <button class="btn xs" onclick="setAllPlotsVis(false)">Hide others</button>
+    </div>
+    <div class="brow"><button class="btn xs dan" onclick="deleteAllPlots()">Delete all plots</button></div>
+
+    <div class="sec" style="margin-top:9px">Location</div>
+    <div class="fr"><label>Address</label><input type="text" id="addr" placeholder="Search address or place…" onkeydown="if(event.key==='Enter')searchAddress()"></div>
+    <div class="brow"><button class="btn sm" id="addr-btn" onclick="searchAddress()">🔍 Search Address</button></div>
+    <div class="fr"><label>or lat,lng</label><input type="text" id="goto" placeholder="37.694, -122.073" onkeydown="if(event.key==='Enter')gotoCoords()"></div>
+    <div class="brow"><button class="btn sm" onclick="gotoCoords()">Center on Coords</button></div>
+
+    <div class="sec">Species Library</div>
+    <div id="upzone" onclick="document.getElementById('sp-inp').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+      ↑ Drop Codex .md file or click to load<br><span style="font-size:8.5px;opacity:.7">VOL2_4 Species Data Cards</span>
+    </div>
+    <input type="file" id="sp-inp" accept=".md,.txt" style="display:none" onchange="loadSpFile(this)">
+
+    <div class="sec" style="margin-top:9px">Library Filter — Climate</div>
+    <div style="font-size:8.5px;color:var(--dim);margin:-3px 0 5px">Which species appear in the list below</div>
+    <div class="trow">
+      <span class="tog on" data-c="Temperate" onclick="toggleClimate(this)">Temperate</span>
+      <span class="tog on" data-c="Mediterranean" onclick="toggleClimate(this)">Medit.</span>
+      <span class="tog on" data-c="Subtropical" onclick="toggleClimate(this)">Subtrop.</span>
+      <span class="tog on" data-c="Tropical" onclick="toggleClimate(this)">Tropical</span>
+    </div>
+    <div id="splist"></div>
+    <div class="brow" style="margin-top:6px"><button class="btn sm" onclick="toggleAddSp()">+ Custom Species</button></div>
+    <div id="add-sp-form">
+      <div class="fr"><label>Name</label><input type="text" id="ns-name" placeholder="Comfrey"></div>
+      <div class="fr"><label>Scientific</label><input type="text" id="ns-sci" placeholder="Symphytum off."></div>
+      <div class="fr"><label>Strata</label><select id="ns-str"><option value="E">E — Emergent</option><option value="H">H — High</option><option value="M" selected>M — Medium</option><option value="L">L — Low</option></select></div>
+      <div class="fr"><label>Lifecycle</label><select id="ns-lc"><option>Short</option><option>Short-Medium</option><option>Short-Perennial</option><option>Medium</option><option selected>Long</option></select></div>
+      <div class="fr"><label>Canopy Ø m</label><input type="number" id="ns-can" min=".1" step=".1" value="3"></div>
+      <div class="fr"><label>Target RS m</label><input type="number" id="ns-rs" min=".1" step=".1" value="3"></div>
+      <div class="fr"><label>Climate</label><input type="text" id="ns-cli" placeholder="Temperate, Subtropical"></div>
+      <div class="fr"><label>Color</label><input type="color" id="ns-col" value="#9b7fd4"></div>
+      <div class="brow" style="margin-top:6px"><button class="btn sm pri" onclick="addCustomSp()">Add</button><button class="btn sm" onclick="toggleAddSp()">Cancel</button></div>
+    </div>
+
+    <div class="sec">Map Visibility</div>
+    <div style="font-size:8.5px;color:var(--dim);margin:-3px 0 5px">Show / hide planted species on the map</div>
+    <div style="font-size:8px;letter-spacing:.08em;color:var(--dim);margin:4px 0 2px">STRATA</div>
+    <div class="trow">
+      <span class="tog e on" data-s="E" onclick="toggleStrata(this)">E — Emergent</span>
+      <span class="tog h on" data-s="H" onclick="toggleStrata(this)">H — High</span>
+      <span class="tog m on" data-s="M" onclick="toggleStrata(this)">M — Medium</span>
+      <span class="tog l on" data-s="L" onclick="toggleStrata(this)">L — Low</span>
+    </div>
+    <div style="font-size:8px;letter-spacing:.08em;color:var(--dim);margin:7px 0 2px">CLIMATE</div>
+    <div class="trow">
+      <span class="tog on" data-cv="Temperate" onclick="toggleClimateVis(this)">Temperate</span>
+      <span class="tog on" data-cv="Mediterranean" onclick="toggleClimateVis(this)">Medit.</span>
+      <span class="tog on" data-cv="Subtropical" onclick="toggleClimateVis(this)">Subtrop.</span>
+      <span class="tog on" data-cv="Tropical" onclick="toggleClimateVis(this)">Tropical</span>
+    </div>
+
+    <div class="sec">Boundary &amp; Rows</div>
+    <button class="btn sm wide" id="b-draw" onclick="startBoundary()">✎ Draw Boundary on Map</button>
+    <button class="btn sm wide" onclick="document.getElementById('kml-inp').click()">⬆ Import KML Boundary</button>
+    <input type="file" id="kml-inp" accept=".kml,.xml" style="display:none" onchange="importKML(this)">
+    <div class="brow">
+      <button class="btn xs" onclick="startOrient()">↻ Set Direction (2 pts)</button>
+      <button class="btn xs dan" onclick="clearBoundary()">Clear Boundary</button>
+    </div>
+    <div class="slr">
+      <label>Row Direction <em id="v-dir">0°</em></label>
+      <input type="range" id="dir-slider" min="0" max="180" value="0" oninput="setDir(this.value)">
+    </div>
+    <div class="slr">
+      <label>Row Spacing <em id="v-rsp">3 m</em></label>
+      <input type="range" id="s-rsp" min="0.5" max="20" step="0.5" value="3" oninput="setRowSpacing(this.value)">
+    </div>
+    <button class="btn sm pri wide" onclick="generateRows()">⊞ Generate Straight Rows</button>
+    <button class="btn sm wide" onclick="openKFill()">⌀ Fill Boundary from Keyline</button>
+    <div class="brow" style="margin-top:4px">
+      <button class="btn xs" onclick="startZone()">▱ Draw Fill Zone</button>
+      <button class="btn xs" onclick="clearFillZone()">Clear Zone</button>
+    </div>
+    <div id="zone-status" style="font-size:8.5px;color:var(--dim);margin-top:3px">no zone — fills whole boundary</div>
+    <div class="brow" style="margin-top:4px">
+      <button class="btn xs dan" onclick="clearKeylines()">Clear Keylines</button>
+      <span id="keyline-count" style="font-size:8.5px;color:var(--dim);align-self:center">0 keylines</span>
+    </div>
+
+    <div class="sec">Row Management</div>
+    <div class="brow">
+      <button class="btn xs" onclick="fillAllRows()">Fill All (sel. sp.)</button>
+      <button class="btn xs" onclick="patternAll()">Pattern → All</button>
+      <button class="btn xs dan" onclick="clearAllPlants()">Clear Plants</button>
+    </div>
+    <div id="rowlist"></div>
+
+    <div class="sec">Export / Save</div>
+    <div style="font-size:8.5px;color:var(--dim);margin-bottom:3px">This plot:</div>
+    <div class="brow">
+      <button class="btn sm pri" onclick="exportKML()">⬇ KML</button>
+      <button class="btn sm" onclick="saveJSON()">⬇ Plot JSON</button>
+      <button class="btn sm" onclick="document.getElementById('load-json').click()">⬆ Import JSON</button>
+      <input type="file" id="load-json" accept=".json" style="display:none" onchange="loadJSON(this)">
+    </div>
+    <div style="font-size:8.5px;color:var(--dim);margin:5px 0 3px">All plots:</div>
+    <div class="brow">
+      <button class="btn sm" onclick="saveProjectJSON()">⬇ Project JSON</button>
+      <button class="btn sm" onclick="window.print()">🖨 Print</button>
+    </div>
+    <div style="font-size:8px;color:var(--dim);margin-top:3px">Importing a Plot JSON adds it as a new plot; a Project JSON replaces everything.</div>
+    <div style="height:18px"></div>
+  </div>
+</aside>
+
+<main id="canvas-area">
+  <div id="toolbar">
+    <button class="tbtn" id="tb-undo" onclick="undo()" disabled>↩ Undo</button>
+    <button class="tbtn" id="tb-redo" onclick="redo()" disabled>↪ Redo</button>
+    <div class="tsep"></div>
+    <button class="tbtn active" id="t-place" onclick="setTool('place')" title="P">✦ Place</button>
+    <button class="tbtn" id="t-boundary" onclick="setTool('boundary')" title="B">▱ Boundary</button>
+    <button class="tbtn" id="t-orient" onclick="setTool('orient')" title="O">↻ Direction</button>
+    <button class="tbtn" id="t-keyline" onclick="setTool('keyline')" title="K">⌀ Keyline</button>
+    <button class="tbtn" id="t-select" onclick="setTool('select')" title="S">↖ Select</button>
+    <button class="tbtn" id="t-erase" onclick="setTool('erase')" title="E — erase trees / keylines">⌫ Erase</button>
+    <div class="tsep"></div>
+    <span style="font-size:9px;color:var(--dim)">Fill:</span>
+    <button class="tbtn active" id="f-tgt" onclick="setFillMode('target')">Target RS</button>
+    <button class="tbtn" id="f-des" onclick="setFillMode('design')">Design RS</button>
+    <div class="tsep"></div>
+    <button class="tbtn active" id="t-labels" onclick="toggleLabels()">🏷 Labels</button>
+    <div class="tsep"></div>
+    <button class="tbtn" id="t-dash" onclick="toggleDash()">📊 Production</button>
+    <div class="tsep"></div>
+    <span style="font-size:9px;color:var(--dim)">Satellite</span>
+    <input type="range" id="sat-op" min="0" max="100" value="55" style="width:90px" oninput="setSatOpacity(this.value)">
+    <span style="font-size:9px;color:var(--dim);width:30px" id="sat-v">55%</span>
+    <div class="tsep"></div>
+    <span style="font-size:9px;color:var(--dim);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="th">Pan to your site, draw a boundary, then generate rows.</span>
+  </div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="summary"><h3>Design Summary</h3><div id="sum-body"></div></div>
+
+    <div id="dash">
+      <div id="dash-head">
+        <div>
+          <h2>Production Dashboard</h2>
+          <div class="sub">Projected yield by species across years — modeled estimate</div>
+        </div>
+        <div class="dash-ctrls">
+          <span style="font-size:9px;color:var(--dim)">Horizon</span>
+          <input type="range" id="dash-horizon" min="3" max="50" value="20" style="width:110px" oninput="setDashHorizon(this.value)">
+          <span style="font-size:9px;color:var(--dim);width:46px" id="dash-hv">20 yrs</span>
+          <button class="tbtn active" id="dash-m-y" onclick="setDashMode('yield')">Yield</button>
+          <button class="tbtn" id="dash-m-v" onclick="setDashMode('value')">Value</button>
+          <button class="tbtn" id="dash-collapse" onclick="collapseDash()" title="Collapse">▾</button>
+          <button class="tbtn" onclick="toggleDash()" title="Close">×</button>
+        </div>
+      </div>
+      <div id="dash-body">
+        <div id="dash-kpis" class="kpis"></div>
+        <div class="dash-grid">
+          <div class="dash-chartwrap">
+            <canvas id="dash-chart" height="220"></canvas>
+            <div class="dash-legend" id="dash-legend"></div>
+          </div>
+          <div class="dash-assump">
+            <h4>Model Assumptions</h4>
+            <div class="fr"><label>Yield density</label><input type="number" id="dash-density" value="0.6" min="0" step="0.1" style="width:60px" oninput="setYieldDensity(this.value)"><span style="font-size:8px;color:var(--dim)">kg/m²/yr</span></div>
+            <div style="font-size:8px;color:var(--dim);margin:2px 0 8px">Default per-plant peak = canopy area × density × lifecycle factor</div>
+            <div class="fr"><label>Discount rate</label><input type="number" id="dash-discount" value="0" min="0" max="30" step="0.5" style="width:60px" oninput="setDiscount(this.value)"><span style="font-size:8px;color:var(--dim)">% (NPV)</span></div>
+            <div style="font-size:8px;color:var(--dim);margin-top:6px">Set per-species peak yield, timing &amp; price in the table below to replace the heuristic defaults with real figures.</div>
+          </div>
+        </div>
+        <div class="dash-tablewrap" id="dash-table"></div>
+        <div class="dash-note" id="dash-note"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="statusbar">
+    <span id="st-ll">lat: — · lng: —</span>
+    <span id="st-tool">Tool: Place</span>
+    <span id="st-sp">No species selected</span>
+    <span style="margin-left:auto" id="st-sv">● saved</span>
+  </div>
+</main>
+</div>
+
+<!-- PATTERN MODAL -->
+<div class="mo" id="mo-pat">
+  <div class="mb" id="pat-box">
+    <span class="mc" onclick="closePat()">×</span>
+    <h2>Row Pattern — <span id="pat-rnum">Row 1</span></h2>
+    <p>Each step places a species, then advances by its spacing. Applying a pattern <strong>stacks</strong> onto existing plants — it only refreshes the species used in this pattern, never deletes other strata already on the row.</p>
+    <div id="pat-steps"></div>
+    <div class="brow" style="margin-top:8px">
+      <button class="btn sm pri" onclick="addPatStep()">+ Add Step (sel. species)</button>
+      <button class="btn sm dan" onclick="clearPatSteps()">Clear</button>
+    </div>
+    <div style="margin:10px 0 0;padding:8px;background:var(--btn);border-radius:3px;font-size:9.5px;color:var(--dim)">Sequence: <span id="pat-prev" style="color:var(--acc)">—</span></div>
+
+    <div class="fr" style="margin-top:12px"><label style="min-width:90px">Apply to</label>
+      <select id="pat-scope">
+        <option value="this">This row only</option>
+        <option value="all">All rows</option>
+        <option value="A">A lines (keyline + every 2nd)</option>
+        <option value="B">B lines (the ones between)</option>
+      </select>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;margin-top:8px;cursor:pointer">
+      <input type="checkbox" id="pat-startbound" style="width:auto" checked> Start first species at the boundary (row start)
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;margin-top:6px;cursor:pointer">
+      <input type="checkbox" id="pat-skipends" style="width:auto"> Skip the row endpoints (keep plants off the edges)
+    </label>
+    <div class="fr" style="margin-top:6px"><label style="min-width:90px">Start offset m</label>
+      <input type="number" id="pat-offset" value="0" min="0" step="0.5" style="width:70px" title="Shift this pattern along the row so it doesn't stack on another species">
+      <span style="font-size:8.5px;color:var(--dim)">phase-shift to avoid stacking</span>
+    </div>
+
+    <div class="brow" style="margin-top:12px">
+      <button class="btn pri" onclick="applyPat()">Stack Pattern onto Row(s)</button>
+      <button class="btn" onclick="closePat()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- OFFSET MODAL -->
+<div class="mo" id="mo-off">
+  <div class="mb" style="width:320px">
+    <span class="mc" onclick="closeOff()">×</span>
+    <h2>Offset Keyline</h2>
+    <p>Create a parallel guide line a fixed distance from the selected keyline.</p>
+    <div class="fr"><label>Distance m</label><input type="number" id="off-d" value="3" min=".1" step=".1"></div>
+    <div class="fr"><label>Direction</label><select id="off-dir"><option value="1">Below / down slope</option><option value="-1">Above / up slope</option></select></div>
+    <div class="brow" style="margin-top:12px"><button class="btn pri" onclick="doOffset()">Create Offset</button><button class="btn" onclick="closeOff()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- KML POLYGON CHOOSER -->
+<div class="mo" id="mo-kml">
+  <div class="mb" style="width:400px">
+    <span class="mc" onclick="closeKml()">×</span>
+    <h2>Choose Boundary Polygon</h2>
+    <p>This KML contains more than one polygon. Pick the one to use as the system boundary.</p>
+    <div id="kml-list"></div>
+    <div class="brow" style="margin-top:10px"><button class="btn" onclick="closeKml()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- KEYLINE FILL -->
+<div class="mo" id="mo-kfill">
+  <div class="mb" style="width:380px">
+    <span class="mc" onclick="closeKFill()">×</span>
+    <h2>Fill Boundary from Keyline</h2>
+    <p>Offsets your drawn keyline up- and down-slope at a fixed spacing to fill the boundary, then turns each offset line into a plantable row. Draw a keyline first with the ⌀ Keyline tool.</p>
+    <div id="kfill-which"></div>
+    <div class="fr"><label>Row spacing m</label><input type="number" id="kfill-sp" value="3" min="0.5" step="0.5" style="width:70px"></div>
+    <div class="brow">
+      <button class="btn xs" onclick="kfSp(3)">3 m</button>
+      <button class="btn xs" onclick="kfSp(5)">5 m</button>
+      <button class="btn xs" onclick="kfSp(10)">10 m</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;margin-top:8px;cursor:pointer">
+      <input type="checkbox" id="kfill-base" style="width:auto" checked> Include the keyline itself as a row
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;font-size:10px;margin-top:6px;cursor:pointer">
+      <input type="checkbox" id="kfill-append" style="width:auto"> Append to existing rows (don't replace)
+    </label>
+    <div style="font-size:8.5px;color:var(--dim);margin-top:8px;line-height:1.5">
+      Fills <b id="kfill-zoneinfo">the whole boundary</b>. To fill only part of a field (multi-zone), draw a Fill Zone in the sidebar first, then turn Append on.
+      In <b>append</b> mode new rows add to the set and near-duplicate rows are skipped; in <b>replace</b> mode rows are regenerated and plants re-link to the nearest new row.
+    </div>
+    <div class="brow" style="margin-top:12px">
+      <button class="btn pri" onclick="runKeylineFill()">Generate Keyline Rows</button>
+      <button class="btn" onclick="closeKFill()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+'use strict';
+// ═══ CONSTANTS ═══
+const SCOL={E:'#9b7fd4',H:'#5a9b6a',M:'#5a8bb0',L:'#c8a050'};
+const SFIL={E:'rgba(155,127,212,',H:'rgba(90,155,106,',M:'rgba(90,139,176,',L:'rgba(200,160,80,'};
+const KMLFIL={E:'4ad47f9b',H:'4a6a9b5a',M:'4ab08b5a',L:'4a50a0c8'};
+const KMLLN={E:'ffd47f9b',H:'ff6a9b5a',M:'ffb08b5a',L:'ff50a0c8'};
+const ZORDER=['L','M','H','E'];
+const R_EARTH=111139; // m per degree lat
+
+// ═══ STATE ═══
+const S={
+  species:[], selSpId:null,
+  canopyOverrides:{},   // speciesId → user-set canopy diameter (m), survives Codex re-parse
+  // ── multi-plot: the ACTIVE plot's data lives in the live fields below; S.plots stores all plots ──
+  plots:[],             // [{id,name,visible,boundary,fillZone,rows,plants,lines,rowDir,rowSpacing}]
+  activePlotId:null,
+  boundary:[],          // [{lat,lng}]  (active plot)
+  fillZone:[],          // optional sub-region for keyline fill [{lat,lng}]
+  rowDir:0,             // degrees (0-360), row direction in local frame (0=east)
+  rowSpacing:3,
+  rows:[],              // [{idx, a:{lat,lng}, b:{lat,lng}}]
+  plants:[],            // [{id, speciesId, lat, lng, rowIdx}]
+  lines:[],             // [{id, points:[{lat,lng}], isContour, isOffset}]
+  strataOn:{E:true,H:true,M:true,L:true},
+  climateOn:{Temperate:true,Mediterranean:true,Subtropical:true,Tropical:true},
+  climateVisOn:{Temperate:true,Mediterranean:true,Subtropical:true,Tropical:true},
+  tool:'place', fillMode:'target', labels:true, satOpacity:.55,
+  drawPts:[], orientPts:[], mouseLL:null,
+  selLineId:null, selContourId:null, focusRow:null,
+  hist:[], histIdx:-1,
+  map:null, sat:null, _ov:null,
+  editRowIdx:null, patSteps:[],
+  dash:{open:false,collapsed:false,horizon:20,mode:'yield',yieldPerM2:0.6,discount:0,cfg:{}},
+  uid:1
+};
+
+// ═══ UTILITIES ═══
+function nid(){return 'i'+(S.uid++)}
+function escX(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function hex2a(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${a})`}
+function scol(s){return SCOL[s]||'#c8b89a'}
+function sfil(s,a){return(SFIL[s]||'rgba(200,184,154,')+a+')'}
+function getSp(id){return S.species.find(s=>s.id===id)}
+
+// ═══ MULTI-PLOT MANAGEMENT ═══
+// Live fields (S.boundary, S.rows, S.plants, S.lines, S.fillZone, S.rowDir, S.rowSpacing) always
+// mirror the active plot. commitActive() writes them back; loadPlot() reads a plot into them.
+function activePlot(){return S.plots.find(p=>p.id===S.activePlotId)||null}
+function commitActive(){
+  const p=activePlot(); if(!p)return;
+  p.boundary=S.boundary; p.fillZone=S.fillZone; p.rows=S.rows; p.plants=S.plants;
+  p.lines=S.lines; p.rowDir=S.rowDir; p.rowSpacing=S.rowSpacing;
+}
+function loadLiveFrom(p){
+  S.boundary=p.boundary||[]; S.fillZone=p.fillZone||[]; S.rows=p.rows||[]; S.plants=p.plants||[];
+  S.lines=p.lines||[]; S.rowDir=p.rowDir||0; S.rowSpacing=p.rowSpacing||3;
+}
+function newPlot(name,activate){
+  const n=(S.plots.length+1);
+  const p={id:nid(),name:name||('Plot '+n),visible:true,boundary:[],fillZone:[],rows:[],plants:[],lines:[],rowDir:0,rowSpacing:3};
+  S.plots.push(p);
+  if(activate!==false)activatePlot(p.id); // commits current plot first, then switches
+  return p;
+}
+function activatePlot(id,skipCommit){
+  if(!skipCommit)commitActive();
+  const p=S.plots.find(x=>x.id===id); if(!p)return;
+  S.activePlotId=id; p.visible=true; loadLiveFrom(p);
+  S.selLineId=null; S.selContourId=null; S.focusRow=null; S.drawPts=[]; S.hist=[]; S.histIdx=-1; pushHist();
+  const ds=document.getElementById('dir-slider');if(ds)ds.value=Math.round(((S.rowDir%180)+180)%180);
+  const rs=document.getElementById('s-rsp');if(rs)rs.value=S.rowSpacing;
+  if(typeof updDirLabel==='function')updDirLabel();
+  const vr=document.getElementById('v-rsp');if(vr)vr.textContent=S.rowSpacing+' m';
+  syncPlotHeader(); renderPlotList(); updRowList(); refreshOverlay(); updSummary(); updZoneStatus();
+  if(p.boundary&&p.boundary.length>=2&&S.map)fitBoundary();
+}
+function renamePlot(id,name){const p=S.plots.find(x=>x.id===id);if(!p)return;p.name=name.trim()||p.name;if(id===S.activePlotId)syncPlotHeader();renderPlotList();autosave()}
+function togglePlotVis(id){const p=S.plots.find(x=>x.id===id);if(!p)return;p.visible=!p.visible;if(id===S.activePlotId&&!p.visible)p.visible=true;renderPlotList();refreshOverlay()}
+function deletePlot(id){
+  const p=S.plots.find(x=>x.id===id); if(!p)return;
+  if(!confirm('Delete plot "'+p.name+'" and everything in it (boundary, rows, plants, keylines)?'))return;
+  const wasActive=(id===S.activePlotId);
+  S.plots=S.plots.filter(x=>x.id!==id);
+  if(!S.plots.length){newPlot('Plot 1',false);S.activePlotId=S.plots[0].id;loadLiveFrom(S.plots[0]);}
+  else if(wasActive){S.activePlotId=S.plots[0].id;loadLiveFrom(S.plots[0]);}
+  S.selLineId=null;S.selContourId=null;S.focusRow=null;
+  syncPlotHeader();renderPlotList();updRowList();refreshOverlay();updSummary();updZoneStatus();autosave()
+}
+function deleteAllPlots(){
+  if(!confirm('Delete ALL plots and start fresh? This cannot be undone.'))return;
+  S.plots=[]; S.activePlotId=null; newPlot('Plot 1');
+  autosave()
+}
+function setAllPlotsVis(v){for(const p of S.plots){p.visible=v||p.id===S.activePlotId}renderPlotList();refreshOverlay()}
+function ensurePlot(){ // guarantee at least one plot exists and is active
+  if(!S.plots.length){const p=newPlot('Plot 1',false);S.activePlotId=p.id;loadLiveFrom(p)}
+  else if(!activePlot()){S.activePlotId=S.plots[0].id;loadLiveFrom(S.plots[0])}
+}
+function sanitize(s){return(String(s||'').trim().replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,''))||'syntropic-design'}
+function projName(){return document.getElementById('proj-name').value.trim()||'syntropic-design'}
+function dlBlob(c,n,t){const b=new Blob([c],{type:t}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),1200)}
+
+// local planar frame anchored at a latlng
+function frameAt(o){const k=Math.cos(o.lat*Math.PI/180);return{
+  toM:(lat,lng)=>({x:(lng-o.lng)*R_EARTH*k,y:(lat-o.lat)*R_EARTH}),
+  toLL:(x,y)=>({lat:o.lat+y/R_EARTH,lng:o.lng+x/(R_EARTH*k)})
+}}
+function llCentroid(pts){let la=0,lo=0;pts.forEach(p=>{la+=p.lat;lo+=p.lng});return{lat:la/pts.length,lng:lo/pts.length}}
+
+// ═══ SPECIES PARSER ═══
+function spId(name,strata,seen){
+  let base='sp_'+sanitize(name).toLowerCase()+'_'+strata.toLowerCase(),id=base,n=2;
+  while(seen.has(id))id=base+'_'+(n++);
+  seen.add(id);return id
+}
+function parseMD(text){
+  const out=[],seen=new Set(); const blocks=text.split(/(?=^### )/m);
+  for(const blk of blocks){
+    if(!blk.startsWith('###')||!blk.includes('**Strata:**'))continue;
+    const hm=blk.match(/^### ([^|*\n\[]+)(?:\s*\|\s*\*([^*\n]+)\*)?/m);
+    if(!hm)continue;
+    const name=hm[1].trim().replace(/\s*\([^)]*\)\s*$/,'').trim();
+    if(!name||/^(EMERGENT|HIGH|MEDIUM|LOW|SECTION|-+$)/.test(name))continue;
+    const sci=hm[2]?hm[2].trim():'';
+    const sm=blk.match(/\*\*Strata:\*\*\s*([EHML])/); if(!sm)continue;
+    const strata=sm[1];
+    const lm=blk.match(/\*\*Lifecycle:\*\*\s*([\w-]+)/);
+    const lifecycle=lm?normLC(lm[1]):'Long';
+    const cm=blk.match(/\*\*Climate:\*\*\s*([^\n]+)/);
+    const climates=cm?cm[1].split(',').map(c=>c.trim().replace(/\s*\([^)]*\)/g,'').trim()).filter(Boolean):[];
+    const dm=blk.match(/\*\*Dimensions:\*\*\s*([^\n]+)/); let canopy=4;
+    if(dm){const hw=dm[1].match(/(\d+(?:\.\d+)?)[\xD7xX](\d+(?:\.\d+)?)/);if(hw)canopy=parseFloat(hw[2])}
+    const rm=blk.match(/\*\*Target RS:\*\*\s*([\d.]+)\s*[\u2013\u2014-]+\s*([\d.]+)/);
+    const tRS=rm?(parseFloat(rm[1])+parseFloat(rm[2]))/2:Math.max(canopy,.5);
+    const drm=blk.match(/\*\*Design RS:\*\*\s*([\d.]+)\s*[\u2013\u2014-]+\s*([\d.]+)/);
+    const dRS=drm?(parseFloat(drm[1])+parseFloat(drm[2]))/2:tRS/2;
+    const soil=[...(blk.match(/\*\*Soil:\*\*[^\n]+/)||[''])[0].matchAll(/\[([^\]]+)\]/g)].map(m=>m[1]);
+    const prun=[...(blk.match(/\*\*Pruning:\*\*[^\n]+/)||[''])[0].matchAll(/\[([^\]]+)\]/g)].map(m=>m[1]);
+    const bm=blk.match(/⚠\uFE0F\s+(?:ABSOLUTE\s+)?HARD BAN[^\n]*/);
+    const sucm=blk.match(/\*\*Succession Credit:\*\*\s*([\w-]+)/);
+    out.push({id:spId(name,strata,seen),name,sciName:sci,strata,lifecycle,climates,
+      canopyDiam:Math.max(.2,canopy),canopyDiam0:Math.max(.2,canopy),targetRS:Math.max(.1,tRS),designRS:Math.max(.05,dRS),
+      soilTags:soil,pruningTags:prun,hardBan:bm?bm[0]:null,succession:sucm?sucm[1]:'Moderate',
+      color:scol(strata),custom:false})
+  }
+  return out
+}
+function normLC(s){const l=s.trim().toLowerCase();if(l.startsWith('short-p'))return'Short-Perennial';if(l.startsWith('short-m'))return'Short-Medium';if(l==='short')return'Short';if(l==='medium')return'Medium';if(l==='long')return'Long';return'Medium'}
+
+// ═══ MAP + OVERLAY ═══
+function initMap(){
+  S.map=L.map('map',{doubleClickZoom:false,zoomControl:true}).setView([37.694,-122.073],15);
+  S.sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Tiles © Esri',maxZoom:21,maxNativeZoom:19,opacity:S.satOpacity}).addTo(S.map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'',maxZoom:21,maxNativeZoom:19,opacity:Math.min(.5,S.satOpacity)}).addTo(S.map);
+
+  const Overlay=L.Layer.extend({
+    onAdd(map){
+      const c=this._c=L.DomUtil.create('canvas','leaflet-design-ov');
+      c.style.position='absolute'; c.style.pointerEvents='none'; c.style.zIndex=450;
+      map.getPanes().overlayPane.appendChild(c);
+      map.on('move zoom moveend zoomend resize viewreset',this._u,this);
+      this._u();
+    },
+    onRemove(map){L.DomUtil.remove(this._c);map.off('move zoom moveend zoomend resize viewreset',this._u,this)},
+    _u(){
+      const map=this._map,size=map.getSize(),dpr=window.devicePixelRatio||1;
+      L.DomUtil.setPosition(this._c,map.containerPointToLayerPoint([0,0]));
+      if(this._c.width!==size.x*dpr||this._c.height!==size.y*dpr){
+        this._c.width=size.x*dpr;this._c.height=size.y*dpr;
+        this._c.style.width=size.x+'px';this._c.style.height=size.y+'px';
+      }
+      renderOverlay(this._c,dpr)
+    }
+  });
+  S._ov=new Overlay(); S._ov.addTo(S.map);
+
+  S.map.on('click',onMapClick);
+  S.map.on('mousemove',e=>{
+    S.mouseLL=e.latlng;
+    document.getElementById('st-ll').textContent=`lat: ${e.latlng.lat.toFixed(5)} · lng: ${e.latlng.lng.toFixed(5)}`;
+    if(S.tool==='place'||S.drawPts.length||S.orientPts.length) scheduleRender();
+  });
+  S.map.on('dblclick',()=>{
+    if(S.tool==='boundary'&&S.drawPts.length>=3) finishBoundary();
+    else if(S.tool==='keyline'&&S.drawPts.length>=2) finishKeyline();
+    else if(S.tool==='zone'&&S.drawPts.length>=3) finishZone();
+  });
+}
+
+let _raf=null;
+function scheduleRender(){if(_raf)return;_raf=requestAnimationFrame(()=>{_raf=null;refreshOverlay()})}
+function refreshOverlay(){if(S._ov)S._ov._u()}
+
+function currentMPerPx(){
+  const c=S.map.getCenter();
+  const p1=S.map.latLngToContainerPoint(c);
+  const c2=L.latLng(c.lat,c.lng+0.0009);
+  const p2=S.map.latLngToContainerPoint(c2);
+  const dM=S.map.distance(c,c2), dPx=Math.hypot(p2.x-p1.x,p2.y-p1.y);
+  return dPx>0?dM/dPx:1
+}
+function P(ll){return S.map.latLngToContainerPoint(L.latLng(ll.lat,ll.lng))}
+
+// Draw a non-active plot dimmed & read-only: boundary outline, rows, canopy dots
+function renderPlotBackground(pl,ctx,mpp){
+  if(pl.boundary&&pl.boundary.length>=2){
+    ctx.beginPath();
+    pl.boundary.forEach((p,i)=>{const q=P(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+    if(pl.boundary.length>=3)ctx.closePath();
+    ctx.fillStyle='rgba(160,150,130,0.05)';ctx.fill();
+    ctx.strokeStyle='rgba(200,190,165,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);
+    // plot name label at centroid
+    if(pl.boundary.length>=3){const c=llCentroid(pl.boundary),q=P(c);
+      ctx.font='11px Georgia';ctx.fillStyle='rgba(220,210,185,0.55)';ctx.textAlign='center';
+      ctx.fillText(pl.name,q.x,q.y);ctx.textAlign='left'}
+  }
+  if(pl.rows&&pl.rows.length){
+    ctx.strokeStyle='rgba(200,190,165,0.18)';ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    for(const r of pl.rows){const path=rowPath(r);ctx.beginPath();for(let i=0;i<path.length;i++){const q=P(path[i]);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)}ctx.stroke()}
+    ctx.setLineDash([]);
+  }
+  if(pl.plants&&pl.plants.length){
+    for(const p of pl.plants){
+      const sp=getSp(p.speciesId);if(!sp)continue;
+      const q=P(p),r=Math.max(1.5,(sp.canopyDiam/2)/mpp);
+      ctx.beginPath();ctx.arc(q.x,q.y,r,0,7);
+      ctx.fillStyle=hex2a(sp.color||scol(sp.strata),0.10);ctx.fill();
+      ctx.strokeStyle=hex2a(sp.color||scol(sp.strata),0.35);ctx.lineWidth=0.8;ctx.stroke();
+    }
+  }
+}
+function renderOverlay(canvas,dpr){
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const W=canvas.width/dpr,H=canvas.height/dpr;
+  ctx.clearRect(0,0,W,H);
+  const mpp=currentMPerPx();
+  updKeylineCount();
+
+  // other visible plots (read-only, dimmed) drawn behind the active plot
+  for(const pl of S.plots){
+    if(pl.id===S.activePlotId||!pl.visible)continue;
+    renderPlotBackground(pl,ctx,mpp);
+  }
+
+  // boundary
+  if(S.boundary.length>=2){
+    ctx.beginPath();
+    S.boundary.forEach((p,i)=>{const q=P(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+    if(S.boundary.length>=3)ctx.closePath();
+    ctx.fillStyle='rgba(200,184,154,0.07)'; ctx.fill();
+    ctx.strokeStyle='rgba(255,228,170,0.95)'; ctx.lineWidth=2; ctx.setLineDash([]); ctx.stroke();
+    S.boundary.forEach(p=>{const q=P(p);ctx.beginPath();ctx.arc(q.x,q.y,3.5,0,7);ctx.fillStyle='#ffe4aa';ctx.fill()});
+  }
+
+  // fill zone (optional sub-region for keyline fill)
+  if(S.fillZone.length>=2){
+    ctx.beginPath();
+    S.fillZone.forEach((p,i)=>{const q=P(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+    if(S.fillZone.length>=3)ctx.closePath();
+    ctx.fillStyle='rgba(90,200,200,0.08)'; ctx.fill();
+    ctx.strokeStyle='rgba(120,225,225,0.85)'; ctx.lineWidth=1.5; ctx.setLineDash([7,5]); ctx.stroke(); ctx.setLineDash([]);
+    S.fillZone.forEach(p=>{const q=P(p);ctx.beginPath();ctx.arc(q.x,q.y,3,0,7);ctx.fillStyle='#7ce1e1';ctx.fill()});
+  }
+
+  // rows (straight or keyline polyline)
+  ctx.lineWidth=1; ctx.setLineDash([4,5]);
+  for(const r of S.rows){
+    const path=rowPath(r);
+    ctx.beginPath();
+    for(let i=0;i<path.length;i++){const q=P(path[i]);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)}
+    ctx.strokeStyle=(S.focusRow===r.idx)?'rgba(255,228,170,0.9)':'rgba(220,210,190,0.4)';
+    ctx.lineWidth=(S.focusRow===r.idx)?2:1;
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // keylines
+  for(const ln of S.lines){
+    if(!ln.points||ln.points.length<2)continue;
+    const sel=ln.id===S.selLineId;
+    ctx.beginPath();
+    ln.points.forEach((p,i)=>{const q=P(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+    if(ln.isContour){ctx.setLineDash([9,4,2,4]);ctx.strokeStyle=sel?'#e0d060':(ln.isOffset?'#60a060':'#c0b040');ctx.lineWidth=sel?2.5:1.9}
+    else{ctx.setLineDash([]);ctx.strokeStyle=sel?'#f0e0c0':'#c8b89a';ctx.lineWidth=sel?2:1.4}
+    ctx.stroke();ctx.setLineDash([]);
+    if(sel&&ln.isContour){
+      ln.points.forEach(p=>{const q=P(p);ctx.beginPath();ctx.arc(q.x,q.y,3,0,7);ctx.fillStyle='#e0d060';ctx.fill()});
+      const last=P(ln.points[ln.points.length-1]);ctx.fillStyle='#e0d060';ctx.font='9px Georgia';ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText('Ctrl+click → offset',last.x+5,last.y-3)
+    }
+  }
+
+  // plants by z-order
+  const labelJobs=[];
+  for(const st of ZORDER){
+    if(!S.strataOn[st])continue;
+    for(const pl of S.plants){
+      const sp=getSp(pl.speciesId); if(!sp||sp.strata!==st)continue;
+      if(!climateVisible(sp))continue;
+      const q=P(pl);
+      if(q.x<-60||q.x>W+60||q.y<-60||q.y>H+60)continue;
+      const col=sp.color||scol(sp.strata);
+      const rPx=Math.max(2.5,(sp.canopyDiam/2)/mpp);
+      ctx.beginPath();ctx.arc(q.x,q.y,rPx,0,7);ctx.fillStyle=sfil(sp.strata,.26);ctx.fill();
+      lcDash(ctx,sp.lifecycle);ctx.strokeStyle=col;ctx.stroke();ctx.setLineDash([]);
+      const cs=Math.max(3,Math.min(rPx*.38,11));
+      ctx.strokeStyle=hex2a(col,.85);ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(q.x-cs,q.y);ctx.lineTo(q.x+cs,q.y);ctx.moveTo(q.x,q.y-cs);ctx.lineTo(q.x,q.y+cs);ctx.stroke();
+      ctx.beginPath();ctx.arc(q.x,q.y,Math.max(1.5,rPx*.08),0,7);ctx.fillStyle=col;ctx.fill();
+      if(S.labels)labelJobs.push({x:q.x,y:q.y+rPx+1,t:sp.name,c:col,r:rPx})
+    }
+  }
+  // labels last — full common names, small text, biggest canopies win, with overlap avoidance
+  if(S.labels){
+    ctx.font='8.5px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='top';
+    labelJobs.sort((a,b)=>b.r-a.r);
+    const taken=[];
+    for(const j of labelJobs){
+      const w=ctx.measureText(j.t).width, h=9;
+      const box=[j.x-w/2-1,j.y-1,j.x+w/2+1,j.y+h+1];
+      let clash=false;
+      for(const b of taken){if(!(box[2]<b[0]||box[0]>b[2]||box[3]<b[1]||box[1]>b[3])){clash=true;break}}
+      if(clash)continue;
+      taken.push(box);
+      ctx.lineWidth=2.5;ctx.strokeStyle='rgba(8,7,5,0.85)';ctx.strokeText(j.t,j.x,j.y);
+      ctx.fillStyle=hex2a(j.c,.92);ctx.fillText(j.t,j.x,j.y)
+    }
+  }
+
+  // ghost
+  if(S.tool==='place'&&S.selSpId&&S.mouseLL){
+    const sp=getSp(S.selSpId);
+    if(sp&&S.strataOn[sp.strata]){
+      let gll=S.mouseLL;
+      const snap=snapToRow(S.mouseLL); if(snap)gll=snap.ll;
+      const q=P(gll),col=sp.color||scol(sp.strata),rPx=Math.max(2.5,(sp.canopyDiam/2)/mpp);
+      ctx.beginPath();ctx.arc(q.x,q.y,rPx,0,7);ctx.fillStyle=hex2a(col,.1);ctx.fill();
+      ctx.setLineDash([4,4]);ctx.strokeStyle=hex2a(col,.5);ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([])
+    }
+  }
+
+  // drawing preview
+  if(S.drawPts.length){
+    const dcol=S.tool==='keyline'?'#c0b040':(S.tool==='zone'?'#7ce1e1':'#ffe4aa');
+    ctx.beginPath();
+    S.drawPts.forEach((p,i)=>{const q=P(p);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});
+    if(S.mouseLL){const q=P(S.mouseLL);ctx.lineTo(q.x,q.y)}
+    ctx.setLineDash([5,4]);ctx.strokeStyle=dcol;ctx.lineWidth=1.8;ctx.stroke();ctx.setLineDash([]);
+    S.drawPts.forEach(p=>{const q=P(p);ctx.beginPath();ctx.arc(q.x,q.y,3.5,0,7);ctx.fillStyle=dcol;ctx.fill()})
+  }
+  // orient preview
+  if(S.orientPts.length){
+    S.orientPts.forEach(p=>{const q=P(p);ctx.beginPath();ctx.arc(q.x,q.y,5,0,7);ctx.strokeStyle='#ffe4aa';ctx.lineWidth=2;ctx.stroke()});
+    if(S.orientPts.length===1&&S.mouseLL){const a=P(S.orientPts[0]),b=P(S.mouseLL);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.setLineDash([4,4]);ctx.strokeStyle='#ffe4aa';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([])}
+  }
+
+  // direction arrow
+  if(S.boundary.length>=3){
+    const c=llCentroid(S.boundary),F=frameAt(c),th=S.rowDir*Math.PI/180,len=44;
+    const a=P(F.toLL(Math.cos(th)*len*mpp,Math.sin(th)*len*mpp));
+    const b=P(F.toLL(-Math.cos(th)*len*mpp,-Math.sin(th)*len*mpp));
+    const cc=P(c);
+    ctx.beginPath();ctx.arc(cc.x,cc.y,len+8,0,7);ctx.fillStyle='rgba(14,13,11,0.35)';ctx.fill();
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle='#ffe4aa';ctx.lineWidth=2;ctx.setLineDash([]);ctx.stroke();
+    [a,b].forEach(e=>{ctx.beginPath();ctx.arc(e.x,e.y,3,0,7);ctx.fillStyle='#ffe4aa';ctx.fill()});
+    ctx.fillStyle='#ffe4aa';ctx.font='8px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('rows',cc.x,cc.y)
+  }
+}
+function lcDash(c,lc){switch(lc){case'Short':c.setLineDash([3,3]);c.lineWidth=1.3;break;case'Short-Medium':c.setLineDash([8,4]);c.lineWidth=1.5;break;case'Short-Perennial':c.setLineDash([2,2,7,2]);c.lineWidth=1.5;break;case'Medium':c.setLineDash([]);c.lineWidth=1.5;break;case'Long':c.setLineDash([]);c.lineWidth=3;break;default:c.setLineDash([]);c.lineWidth=1.5}}
+
+// ═══ MAP CLICK DISPATCH ═══
+function onMapClick(e){
+  const ll={lat:e.latlng.lat,lng:e.latlng.lng};
+  switch(S.tool){
+    case 'place': placePlantAt(ll); break;
+    case 'boundary': pushDrawPt(ll); break;
+    case 'keyline': pushDrawPt(ll); break;
+    case 'zone': pushDrawPt(ll); break;
+    case 'orient':
+      S.orientPts.push(ll);
+      if(S.orientPts.length===2){setDirFromPoints();S.orientPts=[];setTool('place')}
+      refreshOverlay(); break;
+    case 'select': selectOrDelete(ll,e.originalEvent); break;
+    case 'erase': eraseAt(ll); break;
+  }
+}
+function pushDrawPt(ll){
+  const last=S.drawPts[S.drawPts.length-1];
+  if(last){const lp=P(last),np=P(ll);if(Math.hypot(lp.x-np.x,lp.y-np.y)<6)return}
+  S.drawPts.push(ll); refreshOverlay()
+}
+
+// ═══ BOUNDARY ═══
+function startBoundary(){ S.drawPts=[]; setTool('boundary') }
+function finishBoundary(){
+  if(S.drawPts.length<3){S.drawPts=[];refreshOverlay();return}
+  pushHist();
+  S.boundary=[...S.drawPts]; S.drawPts=[];
+  S.rowDir=longestEdgeAngle(S.boundary);
+  document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);
+  updDirLabel(); setTool('place'); refreshOverlay(); autosave();
+  flash('Boundary set — direction aligned to longest edge. Adjust if needed, then Generate Rows.')
+}
+function clearBoundary(){
+  if(!S.boundary.length){return}
+  if(!confirm('Clear boundary and generated rows?'))return;
+  pushHist(); S.boundary=[]; S.fillZone=[]; S.rows=[]; S.drawPts=[]; updRowList(); refreshOverlay(); updSummary(); updZoneStatus(); autosave()
+}
+
+// ── KML BOUNDARY IMPORT ──
+function parseCoordStr(s){
+  const out=[];
+  for(const tk of s.trim().split(/\s+/)){
+    const p=tk.split(',');
+    if(p.length>=2){const lng=parseFloat(p[0]),lat=parseFloat(p[1]);if(isFinite(lat)&&isFinite(lng))out.push({lat,lng})}
+  }
+  if(out.length>1){const a=out[0],b=out[out.length-1];if(Math.abs(a.lat-b.lat)<1e-9&&Math.abs(a.lng-b.lng)<1e-9)out.pop()}
+  return out
+}
+function placemarkName(el){
+  let n=el;
+  while(n&&n.tagName&&n.tagName.toLowerCase()!=='placemark')n=n.parentNode;
+  if(n&&n.getElementsByTagName){const ne=n.getElementsByTagName('name')[0];if(ne)return ne.textContent.trim()}
+  return ''
+}
+function parseKMLPolys(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw new Error('file is not valid XML/KML');
+  const out=[],polyEls=doc.getElementsByTagName('Polygon');
+  for(let i=0;i<polyEls.length;i++){
+    const pe=polyEls[i]; let coordsEl=null;
+    const obi=pe.getElementsByTagName('outerBoundaryIs')[0];
+    if(obi)coordsEl=obi.getElementsByTagName('coordinates')[0];
+    if(!coordsEl)coordsEl=pe.getElementsByTagName('coordinates')[0];
+    if(!coordsEl)continue;
+    const pts=parseCoordStr(coordsEl.textContent);
+    if(pts.length>=3)out.push({pts,name:placemarkName(pe)||('Polygon '+(out.length+1)),area:polyAreaM2(pts)})
+  }
+  return out
+}
+function polyAreaM2(pts){
+  if(pts.length<3)return 0;
+  const o=llCentroid(pts),F=frameAt(o),m=pts.map(p=>F.toM(p.lat,p.lng));
+  let a=0;for(let i=0;i<m.length;i++){const A=m[i],B=m[(i+1)%m.length];a+=A.x*B.y-B.x*A.y}
+  return Math.abs(a/2)
+}
+function importKML(inp){
+  const f=inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const polys=parseKMLPolys(e.target.result);
+      if(!polys.length){
+        const hasLines=/(<LineString)/i.test(e.target.result);
+        alert('No <Polygon> found in that KML.'+(hasLines?'\n(The file contains lines but no closed polygon — a boundary needs a polygon.)':'')+'\nExport your boundary as a polygon, or draw it on the map.');
+        return
+      }
+      if(polys.length===1)applyImportedBoundary(polys[0].pts,polys[0].name);
+      else showKmlChooser(polys);
+    }catch(err){alert('Could not read KML: '+err.message)}
+  };
+  rd.readAsText(f); inp.value=''
+}
+function applyImportedBoundary(pts,name){
+  pushHist();
+  S.boundary=pts.slice();
+  S.rows=[]; // existing rows no longer match the new boundary
+  S.rowDir=longestEdgeAngle(S.boundary);
+  document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);
+  updDirLabel(); setTool('place'); fitBoundary(); updRowList(); refreshOverlay(); updSummary(); autosave();
+  const a=polyAreaM2(pts);
+  flash('Imported boundary'+(name?' "'+name+'"':'')+' — '+pts.length+' vertices, '+(a/4046.86).toFixed(1)+' ac. Set direction if needed, then Generate Rows.')
+}
+let _kmlPolys=[];
+function showKmlChooser(polys){
+  _kmlPolys=polys;
+  document.getElementById('kml-list').innerHTML=polys.map((p,i)=>
+    `<button class="btn wide" style="justify-content:space-between" onclick="pickKml(${i})">
+      <span>${escX(p.name)}</span>
+      <span style="color:var(--dim);font-size:9px">${p.pts.length} pts · ${(p.area/4046.86).toFixed(1)} ac</span>
+    </button>`).join('');
+  document.getElementById('mo-kml').classList.add('open')
+}
+function pickKml(i){const p=_kmlPolys[i];closeKml();if(p)applyImportedBoundary(p.pts,p.name)}
+function closeKml(){document.getElementById('mo-kml').classList.remove('open')}
+function longestEdgeAngle(pts){
+  const o=llCentroid(pts),F=frameAt(o);
+  const m=pts.map(p=>F.toM(p.lat,p.lng));
+  let best=0,bl=-1;
+  for(let i=0;i<m.length;i++){const a=m[i],b=m[(i+1)%m.length];const len=Math.hypot(b.x-a.x,b.y-a.y);if(len>bl){bl=len;best=Math.atan2(b.y-a.y,b.x-a.x)}}
+  return(best*180/Math.PI+360)%360
+}
+
+// ═══ DIRECTION ═══
+function startOrient(){ S.orientPts=[]; setTool('orient'); flash('Click two points along the desired row direction.') }
+function setDirFromPoints(){
+  const[p,q]=S.orientPts,o=p,F=frameAt(o),a=F.toM(q.lat,q.lng);
+  pushHist();
+  S.rowDir=(Math.atan2(a.y,a.x)*180/Math.PI+360)%360;
+  document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);
+  updDirLabel(); refreshOverlay(); autosave()
+}
+function setDir(v){ pushHistLight(); S.rowDir=parseFloat(v); updDirLabel(); refreshOverlay(); autosave() }
+function updDirLabel(){ document.getElementById('v-dir').textContent=Math.round(((S.rowDir%180)+180)%180)+'°' }
+function setRowSpacing(v){ S.rowSpacing=parseFloat(v); document.getElementById('v-rsp').textContent=v+' m'; autosave() }
+
+// ═══ ROW GENERATION (scanline fill of boundary polygon) ═══
+function clipLineToPoly(P0,d,poly){
+  const ts=[],n=poly.length;
+  for(let i=0;i<n;i++){
+    const a=poly[i],b=poly[(i+1)%n],ex=b.x-a.x,ey=b.y-a.y;
+    const det=ex*d.y-d.x*ey; if(Math.abs(det)<1e-9)continue;
+    const rx=a.x-P0.x,ry=a.y-P0.y;
+    const t=(-rx*ey+ex*ry)/det;
+    const s=(d.x*ry-d.y*rx)/det;
+    if(s>=-1e-9&&s<=1+1e-9)ts.push(t)
+  }
+  ts.sort((x,y)=>x-y);
+  const uniq=[]; for(const t of ts){if(!uniq.length||Math.abs(t-uniq[uniq.length-1])>1e-4)uniq.push(t)}
+  const ivs=[]; for(let i=0;i+1<uniq.length;i+=2)ivs.push([uniq[i],uniq[i+1]]);
+  return ivs
+}
+function generateRows(){
+  if(S.boundary.length<3){alert('Draw and close a boundary first (Boundary tool → click vertices → double-click to close).');return}
+  pushHist();
+  const o=llCentroid(S.boundary),F=frameAt(o);
+  const poly=S.boundary.map(p=>F.toM(p.lat,p.lng));
+  const th=S.rowDir*Math.PI/180,d={x:Math.cos(th),y:Math.sin(th)},perp={x:-Math.sin(th),y:Math.cos(th)};
+  let pmin=1e9,pmax=-1e9;
+  poly.forEach(pt=>{const pp=pt.x*perp.x+pt.y*perp.y;pmin=Math.min(pmin,pp);pmax=Math.max(pmax,pp)});
+  const sp=S.rowSpacing,rows=[];
+  for(let p=Math.ceil(pmin/sp)*sp;p<=pmax;p+=sp){
+    const P0={x:perp.x*p,y:perp.y*p};
+    for(const[t0,t1]of clipLineToPoly(P0,d,poly)){
+      if(t1-t0<0.5)continue;
+      rows.push({a:F.toLL(P0.x+d.x*t0,P0.y+d.y*t0),b:F.toLL(P0.x+d.x*t1,P0.y+d.y*t1)})
+    }
+  }
+  S.rows=rows.map((r,i)=>({idx:i,a:r.a,b:r.b}));
+  // re-tag plants to nearest new row
+  S.plants.forEach(pl=>{const sn=snapNearestRow(pl);if(sn)pl.rowIdx=sn.row});
+  updRowList(); refreshOverlay(); updSummary(); autosave();
+  flash(S.rows.length+' rows generated. Use Fill / Pattern per row, or Fill All.')
+}
+
+// ═══ ROW HELPERS (path-aware: rows may be straight {a,b} or polyline {path}) ═══
+function rowPath(r){ return (r.path&&r.path.length>=2)?r.path:[r.a,r.b] }
+function pathSampler(path){
+  const o=path[0],k=Math.cos(o.lat*Math.PI/180);
+  const M=path.map(p=>({x:(p.lng-o.lng)*R_EARTH*k,y:(p.lat-o.lat)*R_EARTH}));
+  const cum=[0]; for(let i=0;i<M.length-1;i++)cum.push(cum[i]+Math.hypot(M[i+1].x-M[i].x,M[i+1].y-M[i].y));
+  const total=cum[cum.length-1];
+  return {total, at:(d)=>{
+    if(d<=0){const p=M[0];return{lat:o.lat+p.y/R_EARTH,lng:o.lng+p.x/(R_EARTH*k)}}
+    if(d>=total){const p=M[M.length-1];return{lat:o.lat+p.y/R_EARTH,lng:o.lng+p.x/(R_EARTH*k)}}
+    let i=0; while(i<cum.length-1&&cum[i+1]<d)i++;
+    const segLen=cum[i+1]-cum[i],f=segLen>0?(d-cum[i])/segLen:0;
+    const x=M[i].x+(M[i+1].x-M[i].x)*f, y=M[i].y+(M[i+1].y-M[i].y)*f;
+    return {lat:o.lat+y/R_EARTH,lng:o.lng+x/(R_EARTH*k)}
+  }}
+}
+function fillPathSpecies(r,spc,fn){const smp=pathSampler(rowPath(r));for(let d=0;d<=smp.total+1e-6;d+=spc){const ll=smp.at(d);fn(ll.lat,ll.lng,d)}}
+function nearestOnPath(F,P,path){
+  const M=path.map(p=>F.toM(p.lat,p.lng));let best=null,bd=1e9;
+  for(let i=0;i<M.length-1;i++){
+    const A=M[i],B=M[i+1],dx=B.x-A.x,dy=B.y-A.y,L2=dx*dx+dy*dy;
+    let t=L2>0?((P.x-A.x)*dx+(P.y-A.y)*dy)/L2:0;t=Math.max(0,Math.min(1,t));
+    const qx=A.x+t*dx,qy=A.y+t*dy,d=Math.hypot(P.x-qx,P.y-qy);
+    if(d<bd){bd=d;best={x:qx,y:qy}}
+  }
+  return best?{x:best.x,y:best.y,dist:bd}:null
+}
+function snapToRow(ll){
+  if(!S.rows.length)return null;
+  const F=frameAt(ll),Pp={x:0,y:0};let bd=1e9,best=null;
+  for(const r of S.rows){const n=nearestOnPath(F,Pp,rowPath(r));if(n&&n.dist<bd){bd=n.dist;best={x:n.x,y:n.y,row:r.idx,dist:n.dist}}}
+  if(best&&best.dist<=S.rowSpacing)return{ll:F.toLL(best.x,best.y),row:best.row};
+  return null
+}
+function snapNearestRow(pl){
+  if(!S.rows.length)return null;
+  const F=frameAt(pl),Pp={x:0,y:0};let bd=1e9,best=null;
+  for(const r of S.rows){const n=nearestOnPath(F,Pp,rowPath(r));if(n&&n.dist<bd){bd=n.dist;best={row:r.idx,dist:n.dist}}}
+  return best&&best.dist<=S.rowSpacing?best:null
+}
+
+// ═══ GEOMETRY: point-in-poly, polyline clip & offset (meters frame) ═══
+function pointInPoly(pt,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+    if(((yi>pt.y)!=(yj>pt.y))&&(pt.x<(xj-xi)*(pt.y-yi)/((yj-yi)||1e-12)+xi))inside=!inside
+  }
+  return inside
+}
+function clipPolylineToPolygon(pl,poly){ // pl,poly in meters → array of inside polylines
+  const runs=[];let cur=null;
+  for(let s=0;s<pl.length-1;s++){
+    const A=pl[s],B=pl[s+1],dx=B.x-A.x,dy=B.y-A.y;
+    let ts=[0,1];
+    for(let i=0;i<poly.length;i++){
+      const Pp=poly[i],Q=poly[(i+1)%poly.length],ex=Q.x-Pp.x,ey=Q.y-Pp.y;
+      const den=dx*ey-dy*ex; if(Math.abs(den)<1e-9)continue;
+      const t=((Pp.x-A.x)*ey-(Pp.y-A.y)*ex)/den;
+      const u=((Pp.x-A.x)*dy-(Pp.y-A.y)*dx)/den;
+      if(t>1e-9&&t<1-1e-9&&u>=-1e-9&&u<=1+1e-9)ts.push(t)
+    }
+    ts.sort((a,b)=>a-b);
+    for(let k=0;k<ts.length-1;k++){
+      const t0=ts[k],t1=ts[k+1]; if(t1-t0<1e-7)continue;
+      const mt=(t0+t1)/2,mid={x:A.x+dx*mt,y:A.y+dy*mt};
+      if(pointInPoly(mid,poly)){
+        const p0={x:A.x+dx*t0,y:A.y+dy*t0},p1={x:A.x+dx*t1,y:A.y+dy*t1};
+        if(cur&&Math.hypot(cur[cur.length-1].x-p0.x,cur[cur.length-1].y-p0.y)<1e-4)cur.push(p1);
+        else{if(cur)runs.push(cur);cur=[p0,p1]}
+      }else if(cur){runs.push(cur);cur=null}
+    }
+  }
+  if(cur)runs.push(cur);
+  return runs.filter(r=>r.length>=2)
+}
+function lineIntersect(p1,p2,p3,p4){
+  const d=(p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x);
+  if(Math.abs(d)<1e-9)return null;
+  const t=((p1.x-p3.x)*(p3.y-p4.y)-(p1.y-p3.y)*(p3.x-p4.x))/d;
+  return{x:p1.x+t*(p2.x-p1.x),y:p1.y+t*(p2.y-p1.y)}
+}
+function segIntersect(a,b,c,d){
+  const rx=b.x-a.x,ry=b.y-a.y,sx=d.x-c.x,sy=d.y-c.y,den=rx*sy-ry*sx;
+  if(Math.abs(den)<1e-12)return null;
+  const t=((c.x-a.x)*sy-(c.y-a.y)*sx)/den,u=((c.x-a.x)*ry-(c.y-a.y)*rx)/den;
+  if(t>1e-6&&t<1-1e-6&&u>1e-6&&u<1-1e-6)return{x:a.x+t*rx,y:a.y+t*ry};
+  return null
+}
+function densifyM(M,step){ // insert points so no segment exceeds `step` (smoother offsets)
+  if(M.length<2)return M.map(p=>({x:p.x,y:p.y}));
+  const out=[{x:M[0].x,y:M[0].y}];
+  for(let i=0;i<M.length-1;i++){
+    const a=M[i],b=M[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy),n=Math.max(1,Math.ceil(len/step));
+    for(let j=1;j<=n;j++)out.push({x:a.x+dx*j/n,y:a.y+dy*j/n});
+  }
+  return out
+}
+// Parallel offset of a polyline: offset each segment by its own normal, then join neighbours with a
+// miter — but if the miter would spike out past a limit (sharp corner), fall back to a bevel. This
+// removes the long stray "spike" segments the old averaged-normal version produced.
+function offsetPolylineM(M,dist){
+  const n=M.length; if(n<2)return M.map(p=>({x:p.x,y:p.y}));
+  const A=[],B=[];
+  for(let i=0;i<n-1;i++){
+    const dx=M[i+1].x-M[i].x,dy=M[i+1].y-M[i].y,l=Math.hypot(dx,dy)||1,nx=dy/l*dist,ny=-dx/l*dist;
+    A.push({x:M[i].x+nx,y:M[i].y+ny}); B.push({x:M[i+1].x+nx,y:M[i+1].y+ny});
+  }
+  const out=[A[0]], limit=1.8*Math.abs(dist)+0.05;
+  for(let i=1;i<n-1;i++){
+    const ip=lineIntersect(A[i-1],B[i-1],A[i],B[i]);
+    if(ip&&Math.hypot(ip.x-M[i].x,ip.y-M[i].y)<=limit)out.push(ip);
+    else{out.push(B[i-1]);out.push(A[i])} // bevel the corner instead of spiking
+  }
+  out.push(B[n-2]);
+  return out
+}
+// Remove self-intersection loops (the "crossing lines" on the concave side of a bend), replacing
+// each crossing with its intersection point so the offset stays a clean single line.
+function removeLoops(P){
+  let changed=true,guard=0;
+  while(changed&&guard++<400){
+    changed=false;
+    for(let i=0;i<P.length-1&&!changed;i++){
+      for(let j=i+2;j<P.length-1;j++){
+        const ip=segIntersect(P[i],P[i+1],P[j],P[j+1]);
+        if(ip){P.splice(i+1,j-i,ip);changed=true;break}
+      }
+    }
+  }
+  return P
+}
+
+// ═══ PLANT OPERATIONS ═══
+function placePlantAt(ll){
+  if(!S.selSpId){flash('Select a species from the list first.');return}
+  let plat=ll.lat,plng=ll.lng,rowIdx=-1;
+  const sn=snapToRow(ll); if(sn){plat=sn.ll.lat;plng=sn.ll.lng;rowIdx=sn.row}
+  pushHist();
+  S.plants.push({id:nid(),speciesId:S.selSpId,lat:plat,lng:plng,rowIdx});
+  refreshOverlay(); updSummary(); autosave()
+}
+function selectOrDelete(ll,oe){
+  const F=frameAt(ll),Pp={x:0,y:0},mpp=currentMPerPx();
+  let bid=null,bd=1e9;
+  for(const p of S.plants){
+    const sp=getSp(p.speciesId);if(!sp||!S.strataOn[sp.strata])continue;
+    const m=F.toM(p.lat,p.lng),dist=Math.hypot(Pp.x-m.x,Pp.y-m.y);
+    const tol=Math.max(sp.canopyDiam/2, 10*mpp); // pixel-aware (≈10px) so it works zoomed out
+    if(dist<tol&&dist<bd){bd=dist;bid=p.id}
+  }
+  if(bid){pushHist();S.plants=S.plants.filter(p=>p.id!==bid);refreshOverlay();updSummary();autosave();return}
+  const lid=nearestLine(ll);
+  if(lid){
+    S.selLineId=lid;const ln=S.lines.find(l=>l.id===lid);
+    if(ln&&ln.isContour){S.selContourId=lid;if(oe&&(oe.ctrlKey||oe.metaKey))document.getElementById('mo-off').classList.add('open')}else S.selContourId=null;
+    refreshOverlay()
+  }else{S.selLineId=null;S.selContourId=null;refreshOverlay()}
+}
+// Eraser tool: click a tree to delete it (nearest plant within ≈12px). Falls back to erasing a
+// keyline if no plant is under the cursor, so it doubles as a keyline eraser.
+function eraseAt(ll){
+  const F=frameAt(ll),Pp={x:0,y:0},mpp=currentMPerPx();
+  let bid=null,bd=1e9;
+  for(const p of S.plants){
+    const sp=getSp(p.speciesId);if(!sp||!S.strataOn[sp.strata])continue;
+    const m=F.toM(p.lat,p.lng),dist=Math.hypot(Pp.x-m.x,Pp.y-m.y);
+    const tol=Math.max(sp.canopyDiam/2, 12*mpp);
+    if(dist<tol&&dist<bd){bd=dist;bid=p.id}
+  }
+  if(bid){pushHist();S.plants=S.plants.filter(p=>p.id!==bid);refreshOverlay();updSummary();autosave();return}
+  const lid=nearestLine(ll);
+  if(lid){pushHist();S.lines=S.lines.filter(l=>l.id!==lid);if(S.selLineId===lid){S.selLineId=null;S.selContourId=null}refreshOverlay();autosave();flash('Keyline erased.')}
+}
+function clearKeylines(){
+  if(!S.lines.length){return}
+  if(!confirm('Remove all '+S.lines.length+' keyline(s) on this plot?'))return;
+  pushHist();S.lines=[];S.selLineId=null;S.selContourId=null;refreshOverlay();updRowList();autosave()
+}
+function fillRow(ri,sid){
+  const row=S.rows.find(r=>r.idx===ri),sp=getSp(sid);if(!row||!sp)return;
+  pushHist();
+  S.plants=S.plants.filter(p=>!(p.rowIdx===ri&&p.speciesId===sid)); // refresh only this species
+  const spc=S.fillMode==='design'?sp.designRS:sp.targetRS;
+  fillPathSpecies(row,spc,(lat,lng)=>S.plants.push({id:nid(),speciesId:sid,lat,lng,rowIdx:ri}));
+  refreshOverlay();updSummary();autosave()
+}
+function fillAllRows(){
+  if(!S.selSpId){alert('Select a species first.');return}
+  if(!S.rows.length){alert('Generate rows first.');return}
+  pushHist();
+  const sp=getSp(S.selSpId),spc=S.fillMode==='design'?sp.designRS:sp.targetRS;
+  S.plants=S.plants.filter(p=>p.speciesId!==S.selSpId||p.rowIdx<0);
+  for(const row of S.rows)fillPathSpecies(row,spc,(lat,lng)=>S.plants.push({id:nid(),speciesId:S.selSpId,lat,lng,rowIdx:row.idx}));
+  refreshOverlay();updRowList();updSummary();autosave()
+}
+function clearRow(ri){pushHist();S.plants=S.plants.filter(p=>p.rowIdx!==ri);refreshOverlay();updRowList();updSummary();autosave()}
+function clearAllPlants(){if(!confirm('Remove all placed plants?'))return;pushHist();S.plants=[];refreshOverlay();updRowList();updSummary();autosave()}
+
+// pattern STACKING: removes only species used in this pattern on the row, keeps everything else
+function applyPatternToRow(ri,steps,opts){
+  opts=opts||{};
+  const row=S.rows.find(r=>r.idx===ri);if(!row||!steps.length)return;
+  const sids=new Set(steps.map(s=>s.speciesId));
+  S.plants=S.plants.filter(p=>!(p.rowIdx===ri&&sids.has(p.speciesId)));
+  const smp=pathSampler(rowPath(row)),L=smp.total; if(L<.01)return;
+  let startT=Math.max(0,parseFloat(opts.startOffset)||0),endT=L;
+  if(opts.skipEnds){
+    const margin=Math.max((steps[0]&&parseFloat(steps[0].spacing)?parseFloat(steps[0].spacing)/2:0.5),0.5);
+    startT=Math.max(startT,margin); endT=L-margin;
+  }
+  let t=startT,si=0,guard=0;
+  while(t<=endT+1e-6&&guard++<40000){
+    const step=steps[si%steps.length],sp=getSp(step.speciesId);
+    if(sp){const ll=smp.at(t);S.plants.push({id:nid(),speciesId:step.speciesId,lat:ll.lat,lng:ll.lng,rowIdx:ri})}
+    t+=parseFloat(step.spacing)||(sp?sp.targetRS:1);si++
+  }
+}
+
+// ═══ KEYLINES ═══
+function finishKeyline(){
+  if(S.drawPts.length<2){S.drawPts=[];refreshOverlay();return}
+  pushHist();
+  S.lines.push({id:nid(),points:[...S.drawPts],isContour:true,isOffset:false});
+  S.drawPts=[];setTool('select');refreshOverlay();autosave();
+  flash('Keyline drawn. Use "Fill Boundary from Keyline" to offset it into rows.')
+}
+// ── optional fill zone (sub-region for one keyline fill) ──
+function startZone(){ S.drawPts=[]; setTool('zone'); flash('Outline the zone this keyline should fill. Double-click to close.') }
+function finishZone(){
+  if(S.drawPts.length<3){S.drawPts=[];refreshOverlay();return}
+  S.fillZone=[...S.drawPts]; S.drawPts=[]; setTool('place'); refreshOverlay(); updZoneStatus(); autosave();
+  flash('Fill zone set. Run "Fill Boundary from Keyline" (Append on) to fill just this zone.')
+}
+function clearFillZone(){ S.fillZone=[]; refreshOverlay(); updZoneStatus(); autosave() }
+function updZoneStatus(){
+  const el=document.getElementById('zone-status'); if(!el)return;
+  el.textContent=S.fillZone.length>=3?('zone set ('+(polyAreaM2(S.fillZone)/4046.86).toFixed(1)+' ac)'):'no zone — fills whole boundary';
+  el.style.color=S.fillZone.length>=3?'var(--h)':'var(--dim)';
+  const z=document.getElementById('kfill-zoneinfo'); if(z)z.textContent=S.fillZone.length>=3?'a drawn zone':'the whole boundary'
+}
+function ptToPolylineDistM(p,M){let bd=1e9;for(let i=0;i<M.length-1;i++){const a=M[i],b=M[i+1],dx=b.x-a.x,dy=b.y-a.y,L2=dx*dx+dy*dy;let t=L2>0?((p.x-a.x)*dx+(p.y-a.y)*dy)/L2:0;t=Math.max(0,Math.min(1,t));bd=Math.min(bd,Math.hypot(p.x-(a.x+t*dx),p.y-(a.y+t*dy)))}return bd}
+// Offset chosen keyline at fixed spacing to fill the region → plantable rows (replace or append)
+function runKeylineFill(){
+  if(S.boundary.length<3){alert('Draw or import a boundary first — keyline rows are clipped to it.');return}
+  const contours=S.lines.filter(l=>l.isContour&&!l.isOffset);
+  if(!contours.length){alert('Draw a keyline first (⌀ Keyline tool), then run this.');return}
+  let base=contours[0];
+  if(contours.length>1){const sel=document.getElementById('kfill-which-sel');if(sel&&sel.value)base=S.lines.find(l=>l.id===sel.value)||base}
+  const spc=Math.max(0.3,parseFloat(document.getElementById('kfill-sp').value)||3);
+  const includeBase=document.getElementById('kfill-base').checked;
+  const append=document.getElementById('kfill-append').checked;
+  const o=llCentroid(S.boundary),F=frameAt(o);
+  const polyM=S.boundary.map(p=>F.toM(p.lat,p.lng));
+  const useZone=S.fillZone.length>=3;
+  const regionM=useZone?S.fillZone.map(p=>F.toM(p.lat,p.lng)):polyM;
+  const baseM=base.points.map(p=>F.toM(p.lat,p.lng));
+  // Size the offset range by how far the region actually reaches from the keyline,
+  // measured at every region vertex AND edge midpoint. This is direction-agnostic, so a
+  // keyline that bends or wraps still gets enough offset rings to cover the whole region
+  // (the old code averaged the keyline's perpendicular, which collapsed on bent lines).
+  let maxD=0;
+  for(let i=0;i<regionM.length;i++){
+    const a=regionM[i],b=regionM[(i+1)%regionM.length];
+    maxD=Math.max(maxD, ptToPolylineDistM(a,baseM), ptToPolylineDistM({x:(a.x+b.x)/2,y:(a.y+b.y)/2},baseM));
+  }
+  const kMax=Math.ceil(maxD/spc)+3, kFrom=-kMax, kTo=kMax;
+  if(kTo-kFrom>4000){alert('That spacing is too fine for this area (too many rows). Increase the spacing.');return}
+  const baseDense=densifyM(baseM,Math.max(spc,3)); // smoother, spike-free offsets
+  // existing rows in meters for dedupe when appending
+  const existingM=append?S.rows.map(r=>rowPath(r).map(p=>F.toM(p.lat,p.lng))):[];
+  const generated=[];
+  for(let k=kFrom;k<=kTo;k++){
+    if(k===0&&!includeBase)continue;
+    const off=removeLoops(offsetPolylineM(baseDense,k*spc));
+    let runs=clipPolylineToPolygon(off,regionM);
+    if(useZone){ // also keep inside the boundary
+      let clipped=[]; for(const r of runs) clipped=clipped.concat(clipPolylineToPolygon(r,polyM)); runs=clipped;
+    }
+    for(const run of runs){
+      if(run.length<2)continue;
+      let len=0;for(let i=0;i<run.length-1;i++)len+=Math.hypot(run[i+1].x-run[i].x,run[i+1].y-run[i].y);
+      if(len<spc*0.5)continue;
+      if(append&&existingM.length){ // skip near-duplicate of an existing row
+        const samples=[run[0],run[Math.floor(run.length/2)],run[run.length-1]];
+        let dup=true;
+        for(const s of samples){let near=1e9;for(const em of existingM)near=Math.min(near,ptToPolylineDistM(s,em));if(near>spc*0.4){dup=false;break}}
+        if(dup)continue;
+      }
+      generated.push({k,path:run.map(pt=>F.toLL(pt.x,pt.y))})
+    }
+  }
+  if(!generated.length){alert(useZone?'No rows generated in that zone — is the zone over the keyline’s reach?':'No rows generated — is the keyline near/inside the boundary?');return}
+  generated.sort((a,b)=>a.k-b.k);
+  pushHist();
+  if(append){
+    let idx=S.rows.length?Math.max(...S.rows.map(r=>r.idx))+1:0;
+    for(const g of generated){S.rows.push({idx:idx++,lvl:g.k,path:g.path,a:g.path[0],b:g.path[g.path.length-1]})}
+  }else{
+    S.rows=generated.map((g,i)=>({idx:i,lvl:g.k,path:g.path,a:g.path[0],b:g.path[g.path.length-1]}));
+    S.plants.forEach(pl=>{const sn=snapNearestRow(pl);pl.rowIdx=sn?sn.row:-1});
+  }
+  closeKFill(); setTool('place'); updRowList(); refreshOverlay(); updSummary(); autosave();
+  flash((append?'Appended ':'Generated ')+generated.length+' keyline rows at '+spc+' m'+(useZone?' in the drawn zone':'')+'. Total rows: '+S.rows.length+'.')
+}
+function openKFill(){
+  const contours=S.lines.filter(l=>l.isContour&&!l.isOffset);
+  const which=document.getElementById('kfill-which');
+  if(contours.length>1){
+    which.innerHTML='<div class="fr"><label>Keyline</label><select id="kfill-which-sel">'+contours.map((l,i)=>`<option value="${l.id}">Keyline ${i+1} (${l.points.length} pts)</option>`).join('')+'</select></div>';
+  } else which.innerHTML='';
+  // default append ON when a zone is set or rows already exist
+  document.getElementById('kfill-append').checked = (S.fillZone.length>=3 || S.rows.length>0);
+  updZoneStatus();
+  document.getElementById('mo-kfill').classList.add('open')
+}
+function closeKFill(){document.getElementById('mo-kfill').classList.remove('open')}
+function kfSp(v){document.getElementById('kfill-sp').value=v}
+function nearestLine(ll){
+  const F=frameAt(ll),Pp={x:0,y:0};let bid=null,bd=1e9;
+  const thresh=Math.max(1,12*currentMPerPx()); // ≈12px target regardless of zoom
+  for(const ln of S.lines){
+    if(!ln.points||ln.points.length<2)continue;
+    const m=ln.points.map(p=>F.toM(p.lat,p.lng));
+    for(let i=0;i<m.length-1;i++){
+      const a=m[i],b=m[i+1],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(len<.001)continue;
+      const t=Math.max(0,Math.min(1,((Pp.x-a.x)*dx+(Pp.y-a.y)*dy)/(len*len)));
+      const dist=Math.hypot(Pp.x-(a.x+t*dx),Pp.y-(a.y+t*dy));
+      if(dist<thresh&&dist<bd){bd=dist;bid=ln.id}
+    }
+  }
+  return bid
+}
+function segNorm(a,b){const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy);if(l<.001)return{x:0,y:1};return{x:dy/l,y:-dx/l}}
+function doOffset(){
+  const dist=parseFloat(document.getElementById('off-d').value)||3,dir=parseInt(document.getElementById('off-dir').value)||1;
+  if(!S.selContourId){closeOff();return}
+  const src=S.lines.find(l=>l.id===S.selContourId);if(!src){closeOff();return}
+  const o=llCentroid(src.points),F=frameAt(o);
+  const m=src.points.map(p=>F.toM(p.lat,p.lng));
+  const off=m.map((pt,i)=>{
+    const prev=i>0?m[i-1]:null,next=i<m.length-1?m[i+1]:null;let nx=0,ny=0;
+    if(prev&&next){const n1=segNorm(prev,pt),n2=segNorm(pt,next);nx=n1.x+n2.x;ny=n1.y+n2.y;const l=Math.hypot(nx,ny);if(l>.001){nx/=l;ny/=l}}
+    else if(prev){const n=segNorm(prev,pt);nx=n.x;ny=n.y}else if(next){const n=segNorm(pt,next);nx=n.x;ny=n.y}
+    return F.toLL(pt.x+nx*dist*dir,pt.y+ny*dist*dir)
+  });
+  pushHist();
+  S.lines.push({id:nid(),points:off,isContour:true,isOffset:true});
+  closeOff();refreshOverlay();autosave()
+}
+
+// ═══ UNDO / REDO ═══
+function snap(){return JSON.stringify({boundary:S.boundary,fillZone:S.fillZone,rowDir:S.rowDir,rowSpacing:S.rowSpacing,rows:S.rows,plants:S.plants,lines:S.lines,uid:S.uid})}
+function restore(s){const d=JSON.parse(s);S.boundary=d.boundary;S.fillZone=d.fillZone||[];S.rowDir=d.rowDir;if(d.rowSpacing!=null)S.rowSpacing=d.rowSpacing;S.rows=d.rows;S.plants=d.plants;S.lines=d.lines;S.uid=d.uid;commitActive();updZoneStatus()}
+let _lightHist=0;
+function pushHistLight(){const now=Date.now();if(now-_lightHist<400)return;_lightHist=now;pushHist()}
+function pushHist(){S.hist.splice(S.histIdx+1);S.hist.push(snap());if(S.hist.length>60)S.hist.shift();else S.histIdx=S.hist.length-1;updUR()}
+function undo(){if(S.histIdx<=0)return;S.histIdx--;restore(S.hist[S.histIdx]);document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);updDirLabel();refreshOverlay();updRowList();updSummary();autosave();updUR()}
+function redo(){if(S.histIdx>=S.hist.length-1)return;S.histIdx++;restore(S.hist[S.histIdx]);document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);updDirLabel();refreshOverlay();updRowList();updSummary();autosave();updUR()}
+function updUR(){document.getElementById('tb-undo').disabled=S.histIdx<=0;document.getElementById('tb-redo').disabled=S.histIdx>=S.hist.length-1}
+
+// ═══ SUMMARY ═══
+function updSummary(){
+  const counts={},sc={E:0,H:0,M:0,L:0};let ca=0;
+  for(const p of S.plants){const sp=getSp(p.speciesId);if(!sp)continue;counts[sp.name]=(counts[sp.name]||0)+1;sc[sp.strata]=(sc[sp.strata]||0)+1;const r=sp.canopyDiam/2;ca+=Math.PI*r*r}
+  let area=0;
+  if(S.boundary.length>=3){const o=llCentroid(S.boundary),F=frameAt(o),m=S.boundary.map(p=>F.toM(p.lat,p.lng));for(let i=0;i<m.length;i++){const a=m[i],b=m[(i+1)%m.length];area+=a.x*b.y-b.x*a.y}area=Math.abs(area/2)}
+  let rowMeters=0; for(const r of S.rows){if(rowPath(r).length>=2)rowMeters+=pathSampler(rowPath(r)).total}
+  const cols={E:'var(--e)',H:'var(--h)',M:'var(--m)',L:'var(--l)'};
+  let h=`<div class="sr"><span class="sl">Total plants</span><span class="sv">${S.plants.length}</span></div>
+    <div class="sr"><span class="sl" style="color:${cols.E}">E Emergent</span><span class="sv">${sc.E}</span></div>
+    <div class="sr"><span class="sl" style="color:${cols.H}">H High</span><span class="sv">${sc.H}</span></div>
+    <div class="sr"><span class="sl" style="color:${cols.M}">M Medium</span><span class="sv">${sc.M}</span></div>
+    <div class="sr"><span class="sl" style="color:${cols.L}">L Low</span><span class="sv">${sc.L}</span></div>
+    <hr class="sdiv">
+    <div class="sr"><span class="sl">Rows</span><span class="sv">${S.rows.length}</span></div>
+    <div class="sr"><span class="sl">Total linear meters</span><span class="sv">${rowMeters>0?(rowMeters.toLocaleString(undefined,{maximumFractionDigits:0})+' m'):'—'}</span></div>
+    <div class="sr"><span class="sl">Canopy area</span><span class="sv">${ca.toFixed(0)} m²</span></div>
+    <div class="sr"><span class="sl">Plot area</span><span class="sv">${area>0?(area.toFixed(0)+' m² ('+(area/4046.86).toFixed(1)+' ac)'):'—'}</span></div>`;
+  const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(top.length){h+='<hr class="sdiv">';top.forEach(([n,c])=>{h+=`<div class="sr"><span class="sl">${escX(n)}</span><span class="sv">${c}</span></div>`})}
+  document.getElementById('sum-body').innerHTML=h;
+  if(S.dash.open&&!S.dash.collapsed)renderDash()
+}
+
+// ═══ PRODUCTION DASHBOARD ═══
+const LC_TIMING={Short:[1,1,2],'Short-Medium':[1,2,4],'Short-Perennial':[1,3,14],Medium:[3,6,22],Long:[6,12,55]};
+const LC_YFACTOR={Short:1.4,'Short-Medium':1.1,'Short-Perennial':0.9,Medium:1.0,Long:1.1};
+function yieldDefaults(sp){
+  const T=LC_TIMING[sp.lifecycle]||[3,6,20];
+  const area=Math.PI*Math.pow(sp.canopyDiam/2,2);
+  const lf=LC_YFACTOR[sp.lifecycle]||1;
+  const perPlant=Math.max(.1,Math.round(area*S.dash.yieldPerM2*lf*10)/10);
+  return {first:T[0],peak:T[1],end:T[2],perPlant,price:0}
+}
+function getYCfg(sp){return Object.assign({},yieldDefaults(sp),S.dash.cfg[sp.id]||{})}
+function setYCfg(id,k,v){const sp=getSp(id);if(!sp)return;S.dash.cfg[id]=Object.assign({},S.dash.cfg[id]||{},{[k]:(parseFloat(v)||0)});renderDash();autosave()}
+function perPlantYieldAt(c,y){
+  const first=c.first,peak=Math.max(c.peak,first),end=Math.max(c.end,peak+1),pk=c.perPlant;
+  if(y<first)return 0;
+  if(y<peak)return pk*((y-first+1)/(peak-first+1));
+  const declineStart=Math.max(peak,end-Math.max(1,Math.round(end*0.2)));
+  if(y<=declineStart)return pk;
+  if(y<=end)return pk*(1-(y-declineStart)/(end-declineStart));
+  return 0
+}
+function dashSeries(){
+  const H=S.dash.horizon, counts={};
+  S.plants.forEach(p=>{counts[p.speciesId]=(counts[p.speciesId]||0)+1});
+  const ids=Object.keys(counts).filter(id=>getSp(id));
+  const years=[],strata={E:[],H:[],M:[],L:[]},total=[];
+  const cfgById={}; ids.forEach(id=>cfgById[id]=getYCfg(getSp(id)));
+  for(let y=1;y<=H;y++){
+    years.push(y);
+    const st={E:0,H:0,M:0,L:0}; let tot=0;
+    for(const id of ids){
+      const sp=getSp(id),c=cfgById[id];
+      let v=perPlantYieldAt(c,y)*counts[id];
+      if(S.dash.mode==='value')v*=(c.price||0);
+      st[sp.strata]+=v; tot+=v
+    }
+    strata.E.push(st.E);strata.H.push(st.H);strata.M.push(st.M);strata.L.push(st.L);total.push(tot)
+  }
+  return {years,strata,total,counts,ids,cfgById}
+}
+function toggleDash(){
+  S.dash.open=!S.dash.open;
+  const d=document.getElementById('dash');
+  d.classList.toggle('open',S.dash.open);
+  document.getElementById('t-dash').classList.toggle('active',S.dash.open);
+  if(S.dash.open){S.dash.collapsed=false;d.classList.remove('collapsed');document.getElementById('dash-collapse').textContent='▾';renderDash()}
+  autosave()
+}
+function collapseDash(){
+  S.dash.collapsed=!S.dash.collapsed;
+  document.getElementById('dash').classList.toggle('collapsed',S.dash.collapsed);
+  document.getElementById('dash-collapse').textContent=S.dash.collapsed?'▴':'▾';
+  if(!S.dash.collapsed)renderDash();
+  autosave()
+}
+function setDashHorizon(v){S.dash.horizon=parseInt(v);document.getElementById('dash-hv').textContent=v+' yrs';renderDash();autosave()}
+function setDashMode(m){S.dash.mode=m;document.getElementById('dash-m-y').classList.toggle('active',m==='yield');document.getElementById('dash-m-v').classList.toggle('active',m==='value');renderDash();autosave()}
+function setYieldDensity(v){S.dash.yieldPerM2=Math.max(0,parseFloat(v)||0);renderDash();autosave()}
+function setDiscount(v){S.dash.discount=Math.max(0,parseFloat(v)||0);renderDash();autosave()}
+function fmtNum(n){if(n>=1000)return(n/1000).toFixed(n>=10000?0:1)+'k';if(n>=100)return n.toFixed(0);return n.toFixed(n<10?1:0)}
+function dashUnit(){return S.dash.mode==='value'?'$':'kg'}
+function dashVal(n){return S.dash.mode==='value'?('$'+fmtNum(n)):(fmtNum(n)+' kg')}
+function renderDash(){
+  if(!S.dash.open||S.dash.collapsed)return;
+  const S2=dashSeries();
+  const hasPlants=S2.ids.length>0;
+  const note=document.getElementById('dash-note');
+  if(!hasPlants){
+    document.getElementById('dash-kpis').innerHTML='<div class="kpi"><div class="k-lbl">No plants yet</div><div class="k-val" style="font-size:12px">—</div><div class="k-sub">Place plants on the map to project production.</div></div>';
+    document.getElementById('dash-table').innerHTML='';
+    const cv=document.getElementById('dash-chart');const cx=cv.getContext('2d');cx.clearRect(0,0,cv.width,cv.height);
+    document.getElementById('dash-legend').innerHTML='';
+    note.textContent='';
+    return
+  }
+  // KPIs
+  const total=S2.total, peak=Math.max(...total), peakYr=total.indexOf(peak)+1;
+  const cumulative=total.reduce((a,b)=>a+b,0);
+  let firstHarvest=Infinity; S2.ids.forEach(id=>{firstHarvest=Math.min(firstHarvest,S2.cfgById[id].first)});
+  const dr=S.dash.discount/100;
+  let npv=0; if(S.dash.mode==='value'&&dr>0)total.forEach((v,i)=>{npv+=v/Math.pow(1+dr,i+1)});
+  const isV=S.dash.mode==='value';
+  const k=[
+    ['Plants placed', S.plants.length, S2.ids.length+' species'],
+    ['First harvest', 'Yr '+(isFinite(firstHarvest)?firstHarvest:'—'), 'earliest yielding species'],
+    ['Peak annual '+(isV?'value':'yield'), dashVal(peak), 'in year '+peakYr],
+    ['Cumulative ('+S.dash.horizon+' yr)', dashVal(cumulative), isV?'gross revenue':'total harvest'],
+  ];
+  if(isV&&dr>0)k.push(['NPV @ '+S.dash.discount+'%', '$'+fmtNum(npv), 'discounted '+S.dash.horizon+' yr value']);
+  document.getElementById('dash-kpis').innerHTML=k.map(c=>`<div class="kpi"><div class="k-lbl">${c[0]}</div><div class="k-val">${c[1]}</div><div class="k-sub">${c[2]}</div></div>`).join('');
+  drawDashChart(S2);
+  // legend
+  const sc={E:'var(--e)',H:'var(--h)',M:'var(--m)',L:'var(--l)'},sn={E:'Emergent',H:'High',M:'Medium',L:'Low'};
+  document.getElementById('dash-legend').innerHTML=Object.keys(sc).map(s=>`<span><i style="background:${sc[s]}"></i>${sn[s]}</span>`).join('')+'<span style="color:var(--acc)"><i style="background:var(--acc)"></i>Total</span>';
+  // table
+  const peakKg={}; // per-species peak total over horizon
+  S2.ids.forEach(id=>{const sp=getSp(id),c=S2.cfgById[id];let mx=0;for(let y=1;y<=S.dash.horizon;y++){let v=perPlantYieldAt(c,y)*S2.counts[id];if(isV)v*=(c.price||0);mx=Math.max(mx,v)}peakKg[id]=mx});
+  const rows=S2.ids.map(id=>({id,sp:getSp(id),c:S2.cfgById[id]})).sort((a,b)=>peakKg[b.id]-peakKg[a.id]);
+  let t=`<table class="dash-tbl"><thead><tr>
+    <th class="l">Species</th><th>Plants</th><th>Peak kg/plant</th><th>First yr</th><th>Peak yr</th><th>End yr</th><th>$/kg</th><th>Peak ${isV?'$/yr':'kg/yr'}</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const col=r.sp.color||scol(r.sp.strata);
+    t+=`<tr>
+      <td class="l"><span class="dash-dot" style="background:${col}"></span>${escX(r.sp.name)} <span style="color:var(--dim)">${r.sp.strata}</span></td>
+      <td>${S2.counts[r.id]}</td>
+      <td><input type="number" min="0" step="0.5" value="${r.c.perPlant}" onchange="setYCfg('${r.id}','perPlant',this.value)"></td>
+      <td><input type="number" min="0" step="1" value="${r.c.first}" onchange="setYCfg('${r.id}','first',this.value)"></td>
+      <td><input type="number" min="1" step="1" value="${r.c.peak}" onchange="setYCfg('${r.id}','peak',this.value)"></td>
+      <td><input type="number" min="1" step="1" value="${r.c.end}" onchange="setYCfg('${r.id}','end',this.value)"></td>
+      <td><input type="number" min="0" step="0.1" value="${r.c.price||0}" onchange="setYCfg('${r.id}','price',this.value)"></td>
+      <td>${dashVal(peakKg[r.id])}</td></tr>`
+  }
+  t+='</tbody></table>';
+  document.getElementById('dash-table').innerHTML=t;
+  note.textContent='Estimates only. Yield curves are modeled from each species\u2019 lifecycle and canopy size (ramp to peak, plateau, then decline) and are not guarantees \u2014 edit any cell to enter measured figures. Value/NPV require a $/kg per species and are planning aids, not financial advice.'
+}
+function drawDashChart(S2){
+  const cv=document.getElementById('dash-chart'),dpr=window.devicePixelRatio||1;
+  const cssW=cv.clientWidth||cv.parentElement.clientWidth||500, cssH=220;
+  cv.width=cssW*dpr; cv.height=cssH*dpr;
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+  const padL=46,padR=12,padT=12,padB=24, W=cssW-padL-padR, Hh=cssH-padT-padB;
+  const years=S2.years, n=years.length;
+  const stacked=years.map((_,i)=>S2.strata.E[i]+S2.strata.H[i]+S2.strata.M[i]+S2.strata.L[i]);
+  let maxV=Math.max(1,...stacked);
+  // nice max
+  const mag=Math.pow(10,Math.floor(Math.log10(maxV))); maxV=Math.ceil(maxV/mag)*mag;
+  const x=i=>padL+(n<=1?0:(i/(n-1))*W);
+  const y=v=>padT+Hh-(v/maxV)*Hh;
+  // gridlines + y labels
+  ctx.strokeStyle='rgba(138,122,106,.18)';ctx.fillStyle='#8a7a6a';ctx.font='8px Georgia,serif';ctx.textAlign='right';ctx.textBaseline='middle';ctx.lineWidth=1;
+  for(let g=0;g<=4;g++){const v=maxV*g/4,yy=y(v);ctx.beginPath();ctx.moveTo(padL,yy);ctx.lineTo(padL+W,yy);ctx.stroke();ctx.fillText((S.dash.mode==='value'?'$':'')+fmtNum(v),padL-5,yy)}
+  // x labels
+  ctx.textAlign='center';ctx.textBaseline='top';
+  const step=Math.max(1,Math.round(n/8));
+  for(let i=0;i<n;i+=step){ctx.fillText('Y'+years[i],x(i),padT+Hh+5)}
+  // stacked areas
+  const cols={E:getComputedStyle(document.documentElement).getPropertyValue('--e').trim()||'#9b7fd4',H:'#5a9b6a',M:'#5a8bb0',L:'#c8a050'};
+  const order=['L','M','H','E'];
+  const base=new Array(n).fill(0);
+  for(const s of order){
+    const top=base.map((b,i)=>b+S2.strata[s][i]);
+    ctx.beginPath();
+    ctx.moveTo(x(0),y(base[0]));
+    for(let i=0;i<n;i++)ctx.lineTo(x(i),y(top[i]));
+    for(let i=n-1;i>=0;i--)ctx.lineTo(x(i),y(base[i]));
+    ctx.closePath();
+    ctx.fillStyle=hex2a(cols[s]||scol(s),.5);ctx.fill();
+    ctx.strokeStyle=cols[s]||scol(s);ctx.lineWidth=1;ctx.stroke();
+    for(let i=0;i<n;i++)base[i]=top[i]
+  }
+  // total line
+  ctx.beginPath();
+  for(let i=0;i<n;i++){const yy=y(stacked[i]);i?ctx.lineTo(x(i),yy):ctx.moveTo(x(i),yy)}
+  ctx.strokeStyle='#c8b89a';ctx.lineWidth=2;ctx.setLineDash([]);ctx.stroke();
+  // peak marker
+  const peak=Math.max(...stacked),pi=stacked.indexOf(peak);
+  if(peak>0){ctx.fillStyle='#c8b89a';ctx.beginPath();ctx.arc(x(pi),y(peak),3,0,7);ctx.fill();
+    ctx.textAlign='center';ctx.textBaseline='bottom';ctx.font='8.5px Georgia,serif';
+    ctx.fillText('peak '+(S.dash.mode==='value'?'$':'')+fmtNum(peak)+' · Y'+years[pi],x(pi),y(peak)-5)}
+}
+
+function exportKML(){
+  if(!S.plants.length&&!S.boundary.length){alert('Nothing to export yet.');return}
+  function ring(lat,lng,rm){const pts=[];for(let i=0;i<=36;i++){const a=(i/36)*Math.PI*2,dl=Math.cos(a)*rm/R_EARTH,dg=Math.sin(a)*rm/(R_EARTH*Math.cos(lat*Math.PI/180));pts.push(`${(lng+dg).toFixed(8)},${(lat+dl).toFixed(8)},0`)}return pts.join(' ')}
+  function plantPM(p){const sp=getSp(p.speciesId);if(!sp)return'';const r=sp.canopyDiam/2,st=sp.strata;
+    return`\n    <Placemark><name>${escX(sp.name)}</name>
+      <description><![CDATA[<b>${escX(sp.name)}</b> (${escX(sp.sciName)})<br>Strata: ${st} | Lifecycle: ${sp.lifecycle} | Canopy: ${sp.canopyDiam}m | Row: ${p.rowIdx>=0?p.rowIdx+1:'free'}]]></description>
+      <Style><PolyStyle><color>${KMLFIL[st]||KMLFIL.M}</color><outline>1</outline></PolyStyle><LineStyle><color>${KMLLN[st]||KMLLN.M}</color><width>1</width></LineStyle></Style>
+      <MultiGeometry><Point><coordinates>${p.lng.toFixed(8)},${p.lat.toFixed(8)},0</coordinates></Point>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>${ring(p.lat,p.lng,r)}</coordinates></LinearRing></outerBoundaryIs></Polygon></MultiGeometry></Placemark>`}
+  function linePM(ln){if(!ln.points||ln.points.length<2)return'';const c=ln.points.map(p=>`${p.lng.toFixed(8)},${p.lat.toFixed(8)},0`).join(' ');const col=ln.isOffset?'ff60a060':'ff80c040';
+    return`\n    <Placemark><name>Keyline</name><Style><LineStyle><color>${col}</color><width>2</width></LineStyle></Style><LineString><coordinates>${c}</coordinates></LineString></Placemark>`}
+  function rowPM(r){const c=rowPath(r).map(p=>`${p.lng.toFixed(8)},${p.lat.toFixed(8)},0`).join(' ');return`\n    <Placemark><name>Row ${r.idx+1}</name><Style><LineStyle><color>645a4a8a</color><width>1</width></LineStyle></Style><LineString><coordinates>${c}</coordinates></LineString></Placemark>`}
+  const byS={E:[],H:[],M:[],L:[]};S.plants.forEach(p=>{const sp=getSp(p.speciesId);if(sp&&byS[sp.strata])byS[sp.strata].push(p)});
+  let bnd='';
+  if(S.boundary.length>=3){const c=[...S.boundary,S.boundary[0]].map(p=>`${p.lng.toFixed(8)},${p.lat.toFixed(8)},0`).join(' ');
+    bnd=`<Folder><name>Plot Boundary</name><Placemark><name>Boundary</name><Style><LineStyle><color>ff8a6a4a</color><width>2</width></LineStyle><PolyStyle><color>208a6a4a</color></PolyStyle></Style><Polygon><outerBoundaryIs><LinearRing><coordinates>${c}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark></Folder>`}
+  const kml=`<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+  <name>${escX(projName())}</name>
+  ${bnd}
+  <Folder><name>Rows</name>${S.rows.map(rowPM).join('')}</Folder>
+  <Folder><name>Keylines</name>${S.lines.map(linePM).join('')}</Folder>
+  <Folder><name>Emergent (E)</name>${byS.E.map(plantPM).join('')}</Folder>
+  <Folder><name>High (H)</name>${byS.H.map(plantPM).join('')}</Folder>
+  <Folder><name>Medium (M)</name>${byS.M.map(plantPM).join('')}</Folder>
+  <Folder><name>Low (L)</name>${byS.L.map(plantPM).join('')}</Folder>
+</Document></kml>`;
+  dlBlob(kml,sanitize(projName())+'.kml','application/vnd.google-earth.kml+xml')
+}
+
+// ═══ SAVE / LOAD ═══
+function plotToObj(p){return{name:p.name,visible:p.visible!==false,boundary:p.boundary||[],fillZone:p.fillZone||[],rows:p.rows||[],plants:p.plants||[],lines:p.lines||[],rowDir:p.rowDir||0,rowSpacing:p.rowSpacing||3}}
+function normalizePlot(p){return{id:p.id||nid(),name:p.name||'Plot',visible:p.visible!==false,boundary:p.boundary||[],fillZone:p.fillZone||[],rows:p.rows||[],plants:p.plants||[],lines:p.lines||[],rowDir:p.rowDir||0,rowSpacing:p.rowSpacing||3}}
+function getDesign(){
+  commitActive();
+  return{v:3, plots:S.plots, activePlotId:S.activePlotId,
+    strataOn:S.strataOn,climateOn:S.climateOn,climateVisOn:S.climateVisOn,labels:S.labels,satOpacity:S.satOpacity,
+    dash:{horizon:S.dash.horizon,mode:S.dash.mode,yieldPerM2:S.dash.yieldPerM2,discount:S.dash.discount,cfg:S.dash.cfg},
+    customSp:S.species.filter(s=>s.custom),canopyOverrides:S.canopyOverrides,
+    view:S.map?{c:[S.map.getCenter().lat,S.map.getCenter().lng],z:S.map.getZoom()}:null,
+    uid:S.uid}
+}
+function setDesign(d){
+  if(!d){return}
+  // migrate old single-plot format (v2: top-level boundary/rows/plants) into one plot
+  if(d.plots===undefined){
+    const p={id:nid(),name:d.name||'Plot 1',visible:true,boundary:d.boundary||[],fillZone:d.fillZone||[],rows:d.rows||[],plants:d.plants||[],lines:d.lines||[],rowDir:d.rowDir||0,rowSpacing:d.rowSpacing||3};
+    d={...d,plots:[p],activePlotId:p.id};
+  }
+  // globals
+  S.strataOn=d.strataOn||S.strataOn;S.climateOn=d.climateOn||S.climateOn;S.climateVisOn=d.climateVisOn||S.climateVisOn;
+  S.labels=d.labels!==undefined?d.labels:true;S.satOpacity=d.satOpacity!==undefined?d.satOpacity:.55;S.uid=d.uid||S.uid;
+  if(d.dash){S.dash.horizon=d.dash.horizon||20;S.dash.mode=d.dash.mode||'yield';S.dash.yieldPerM2=d.dash.yieldPerM2!==undefined?d.dash.yieldPerM2:0.6;S.dash.discount=d.dash.discount||0;S.dash.cfg=d.dash.cfg||{};
+    const dh=document.getElementById('dash-horizon');if(dh){dh.value=S.dash.horizon;document.getElementById('dash-hv').textContent=S.dash.horizon+' yrs';document.getElementById('dash-density').value=S.dash.yieldPerM2;document.getElementById('dash-discount').value=S.dash.discount;setDashMode(S.dash.mode)}}
+  if(d.customSp){S.species=S.species.filter(s=>!s.custom);S.species.push(...d.customSp)}
+  S.canopyOverrides=d.canopyOverrides||{}; applyCanopyOverrides();
+  // plots
+  S.plots=(d.plots&&d.plots.length)?d.plots.map(normalizePlot):[];
+  ensurePlot();
+  S.activePlotId=(d.activePlotId&&S.plots.find(p=>p.id===d.activePlotId))?d.activePlotId:S.plots[0].id;
+  loadLiveFrom(activePlot());
+  S.hist=[];S.histIdx=-1;pushHist();
+  // UI sync
+  syncPlotHeader();
+  document.getElementById('dir-slider').value=Math.round(((S.rowDir%180)+180)%180);
+  document.getElementById('s-rsp').value=S.rowSpacing;
+  document.getElementById('sat-op').value=Math.round(S.satOpacity*100);
+  updDirLabel();document.getElementById('v-rsp').textContent=S.rowSpacing+' m';
+  document.getElementById('sat-v').textContent=Math.round(S.satOpacity*100)+'%';
+  document.getElementById('t-labels').classList.toggle('active',S.labels);
+  syncFilterToggles();
+  if(S.sat)S.sat.setOpacity(S.satOpacity);
+  if(d.view&&S.map)S.map.setView(d.view.c,d.view.z);
+  else if(S.boundary.length&&S.map)fitBoundary();
+  renderSpList();renderPlotList();updRowList();refreshOverlay();updSummary();updZoneStatus()
+}
+function fitBoundary(){if(S.boundary.length<2)return;const b=L.latLngBounds(S.boundary.map(p=>[p.lat,p.lng]));S.map.fitBounds(b,{padding:[40,40]})}
+function autosave(){try{localStorage.setItem('sptd2-design',JSON.stringify(getDesign()));document.getElementById('st-sv').textContent='● saved'}catch(e){document.getElementById('st-sv').textContent='⚠ save err'}}
+function saveJSON(){ // saves the ACTIVE plot as a standalone file
+  commitActive();const p=activePlot();if(!p){alert('No plot to save.');return}
+  let n=p.name.trim();if(!n){n=prompt('Plot name:','Plot');if(n===null)return;renamePlot(p.id,n)}
+  const obj={v:3,single:true,plot:plotToObj(p),customSp:S.species.filter(s=>s.custom),canopyOverrides:S.canopyOverrides};
+  dlBlob(JSON.stringify(obj,null,2),sanitize(n||'plot')+'.json','application/json')
+}
+function saveProjectJSON(){ // saves ALL plots + globals
+  dlBlob(JSON.stringify(getDesign(),null,2),sanitize('syntropic-project')+'.json','application/json')
+}
+function addImportedPlot(data){
+  commitActive();
+  const po=data.plot||data; // accept {plot:{...}} or a bare old single-plot design
+  if(data.customSp){for(const cs of data.customSp){if(!S.species.find(s=>s.id===cs.id))S.species.push(cs)}}
+  if(data.canopyOverrides){Object.assign(S.canopyOverrides,data.canopyOverrides);applyCanopyOverrides()}
+  const p=normalizePlot({id:nid(),name:po.name||('Plot '+(S.plots.length+1)),visible:true,
+    boundary:po.boundary,fillZone:po.fillZone,rows:po.rows,plants:po.plants,lines:po.lines,rowDir:po.rowDir,rowSpacing:po.rowSpacing});
+  S.plots.push(p);
+  activatePlot(p.id,true);
+  renderSpList();
+  if(p.boundary.length&&S.map)fitBoundary();
+  flash('Imported "'+p.name+'" as a new plot.');
+}
+function loadJSON(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=e=>{try{
+  const data=JSON.parse(e.target.result);
+  if(data.plots){setDesign(data);}                       // full project → replace all
+  else if(data.single&&data.plot){addImportedPlot(data);} // single plot → add
+  else if(data.boundary||data.rows||data.plants){addImportedPlot(data);} // old single design → add
+  else{alert('Unrecognized file.');return}
+  autosave()
+}catch(err){alert('Load failed: '+err.message)}};rd.readAsText(f);inp.value=''}
+function loadLS(){try{const r=localStorage.getItem('sptd2-design');if(r)setDesign(JSON.parse(r))}catch(e){console.warn(e)}}
+
+// ═══ SPECIES UI ═══
+function handleDrop(ev){ev.preventDefault();document.getElementById('upzone').classList.remove('drag');const f=ev.dataTransfer.files[0];if(f)readSpFile(f)}
+function loadSpFile(inp){const f=inp.files[0];if(f)readSpFile(f);inp.value=''}
+function readSpFile(f){const rd=new FileReader();rd.onload=e=>{const parsed=parseMD(e.target.result);if(!parsed.length){alert('No species found. Upload the VOL2_4 Species Data Cards file.');return}
+  S.species=[...parsed,...S.species.filter(s=>s.custom)];
+  applyCanopyOverrides();
+  const z=document.getElementById('upzone');z.classList.add('ok');z.innerHTML=`✓ ${parsed.length} species loaded<br><span style="font-size:8.5px;opacity:.7">Drop to reload</span>`;
+  try{localStorage.setItem('sptd2-sp',JSON.stringify(S.species))}catch(e){}
+  renderSpList();autosave()};rd.readAsText(f)}
+function renderSpList(){
+  const list=document.getElementById('splist');
+  const filtered=S.species.filter(sp=>(!sp.climates||!sp.climates.length)||sp.climates.some(c=>S.climateOn[c]));
+  if(!filtered.length){list.innerHTML='<div style="font-size:9px;color:var(--dim);padding:10px 4px;text-align:center">Upload Codex file above to load species</div>';return}
+  const grp={E:[],H:[],M:[],L:[]};filtered.forEach(sp=>{if(grp[sp.strata])grp[sp.strata].push(sp)});
+  const sh={E:'E — Emergent',H:'H — High',M:'M — Medium',L:'L — Low'},sc={E:'var(--e)',H:'var(--h)',M:'var(--m)',L:'var(--l)'};
+  let h='';
+  for(const[st,sps]of Object.entries(grp)){if(!sps.length)continue;h+=`<div class="sp-strhdr" style="color:${sc[st]}">${sh[st]}</div>`;
+    for(const sp of sps.sort((a,b)=>a.name.localeCompare(b.name))){
+      const col=sp.color||scol(sp.strata),sel=sp.id===S.selSpId,bdr=lcBorder(sp.lifecycle,col);
+      const warn=sp.hardBan?'<span style="color:#c8a050;font-size:8px" title="'+escX(sp.hardBan)+'">⚠</span>':'';
+      const cust=sp.custom?'<span style="color:var(--dim);font-size:8px">✎</span>':'';
+      const edited=S.canopyOverrides[sp.id]!=null?'<span style="color:var(--acc);font-size:8px" title="canopy edited">●</span>':'';
+      h+=`<div class="spi${sel?' sel':''}" onclick="selectSp('${sp.id}')" title="${escX(sp.sciName||'')}${sp.hardBan?'\n⚠ '+sp.hardBan:''}">
+        <div class="sp-dot" style="background:${hex2a(col,.25)};${bdr}"></div>
+        <span class="sp-name">${escX(sp.name)}</span><span class="sp-meta">${(+sp.canopyDiam).toFixed(1)}m ${edited}${warn}${cust}</span></div>`;
+      if(sel)h+=`<div class="sp-can-edit" onclick="event.stopPropagation()">
+        <label>Canopy Ø</label>
+        <input type="number" value="${(+sp.canopyDiam).toFixed(1)}" min="0.2" step="0.5" onchange="setSpCanopy('${sp.id}',this.value)">
+        <span>m</span>
+        <button class="btn xs" title="Reset to Codex value (${(+(sp.canopyDiam0!=null?sp.canopyDiam0:sp.canopyDiam)).toFixed(1)} m)" onclick="resetSpCanopy('${sp.id}')">↺</button>
+      </div>`;}}
+  list.innerHTML=h
+}
+function lcBorder(lc,col){switch(lc){case'Short':return`border:1.5px dashed ${col}`;case'Short-Medium':return`border:2px dashed ${col}`;case'Short-Perennial':return`border:1.5px dotted ${col}`;case'Medium':return`border:1.5px solid ${col}`;case'Long':return`border:3px solid ${col}`;default:return`border:1.5px solid ${col}`}}
+// ── multi-plot UI ──
+function syncPlotHeader(){const p=activePlot();const el=document.getElementById('proj-name');if(el)el.value=p?p.name:''}
+function renderPlotList(){
+  const el=document.getElementById('plotlist'); if(!el)return;
+  if(!S.plots.length){el.innerHTML='';return}
+  el.innerHTML=S.plots.map(p=>{
+    const act=p.id===S.activePlotId, cnt=(p.plants?p.plants.length:0);
+    return `<div class="plot-item${act?' act':''}">
+      <span class="plot-eye" title="Show/hide on map" onclick="togglePlotVis('${p.id}')">${p.visible?'👁':'—'}</span>
+      <span class="plot-name" title="Click to edit this plot" onclick="activatePlot('${p.id}')">${escX(p.name)}${act?' <em>· editing</em>':''}<br><span class="plot-meta">${cnt} plants · ${(p.rows?p.rows.length:0)} rows${p.boundary&&p.boundary.length>=3?'':' · no boundary'}</span></span>
+      <span class="plot-del" title="Delete plot" onclick="deletePlot('${p.id}')">✕</span>
+    </div>`}).join('');
+}
+function updKeylineCount(){const el=document.getElementById('keyline-count');if(el)el.textContent=S.lines.length+' keyline'+(S.lines.length===1?'':'s')}
+function selectSp(id){S.selSpId=id;setTool('place');renderSpList();const sp=getSp(id);document.getElementById('st-sp').textContent=sp?sp.name:'—'}
+// ── per-species canopy diameter (editable, persists across Codex re-parse) ──
+function applyCanopyOverrides(){for(const sp of S.species){const v=S.canopyOverrides[sp.id];if(v!=null&&!isNaN(v))sp.canopyDiam=v}}
+function setSpCanopy(id,v){
+  const sp=getSp(id);if(!sp)return;
+  const val=Math.max(0.2,parseFloat(v)||sp.canopyDiam);
+  if(sp.canopyDiam0===undefined)sp.canopyDiam0=sp.canopyDiam;
+  sp.canopyDiam=val; S.canopyOverrides[id]=val;
+  renderSpList();refreshOverlay();updSummary();autosave()
+}
+function resetSpCanopy(id){
+  const sp=getSp(id);if(!sp)return;
+  delete S.canopyOverrides[id];
+  if(sp.canopyDiam0!==undefined)sp.canopyDiam=sp.canopyDiam0;
+  renderSpList();refreshOverlay();updSummary();autosave()
+}
+function toggleClimate(el){el.classList.toggle('on');S.climateOn[el.dataset.c]=el.classList.contains('on');renderSpList()}
+function toggleStrata(el){el.classList.toggle('on');S.strataOn[el.dataset.s]=el.classList.contains('on');refreshOverlay()}
+function toggleClimateVis(el){el.classList.toggle('on');S.climateVisOn[el.dataset.cv]=el.classList.contains('on');refreshOverlay()}
+function climateVisible(sp){if(!sp.climates||!sp.climates.length)return true;return sp.climates.some(c=>S.climateVisOn[c])}
+function syncFilterToggles(){
+  document.querySelectorAll('[data-c]').forEach(el=>el.classList.toggle('on',S.climateOn[el.dataset.c]));
+  document.querySelectorAll('[data-s]').forEach(el=>el.classList.toggle('on',S.strataOn[el.dataset.s]));
+  document.querySelectorAll('[data-cv]').forEach(el=>el.classList.toggle('on',S.climateVisOn[el.dataset.cv]))
+}
+function toggleAddSp(){const f=document.getElementById('add-sp-form');f.style.display=f.style.display==='none'?'block':'none'}
+function addCustomSp(){const name=document.getElementById('ns-name').value.trim();if(!name){alert('Enter a name.');return}
+  S.species.push({id:nid(),name,sciName:document.getElementById('ns-sci').value.trim(),strata:document.getElementById('ns-str').value,lifecycle:document.getElementById('ns-lc').value,
+    climates:document.getElementById('ns-cli').value.split(',').map(c=>c.trim()).filter(Boolean),
+    canopyDiam:parseFloat(document.getElementById('ns-can').value)||3,canopyDiam0:parseFloat(document.getElementById('ns-can').value)||3,targetRS:parseFloat(document.getElementById('ns-rs').value)||3,
+    designRS:(parseFloat(document.getElementById('ns-rs').value)||3)/2,soilTags:[],pruningTags:[],hardBan:null,succession:'Moderate',
+    color:document.getElementById('ns-col').value,custom:true});
+  toggleAddSp();renderSpList();autosave()}
+
+// ═══ ROW LIST UI ═══
+// A/B designation: for keyline rows use the offset LEVEL (lvl=k) so the reference keyline (k=0)=A
+// and lines alternate strictly outward (B,A,B…) regardless of how clipping split each level into runs.
+// Straight rows have no lvl, so fall back to sequential index parity.
+function rowAB(r){const p=(r.lvl!=null?r.lvl:r.idx);return((((p%2)+2)%2)===0)?'A':'B'}
+function updRowList(){
+  const rl=document.getElementById('rowlist');
+  if(!S.rows.length){rl.innerHTML='<div style="font-size:9px;color:var(--dim);padding:8px 4px;text-align:center">No rows yet — draw a boundary &amp; Generate Rows</div>';return}
+  let h='';
+  for(const r of S.rows){
+    const pc=S.plants.filter(p=>p.rowIdx===r.idx).length;
+    const ab=rowAB(r);
+    const abc=ab==='A'?'var(--h)':'var(--m)';
+    h+=`<div class="ri${S.focusRow===r.idx?' foc':''}">
+      <span class="ri-num" onclick="focusRowToggle(${r.idx})">Row ${r.idx+1} <span style="color:${abc};font-size:8px">${ab}</span></span>
+      <span class="ri-pc" onclick="focusRowToggle(${r.idx})">${pc} plant${pc!==1?'s':''}</span>
+      <button class="btn xs" onclick="fillSelRow(${r.idx})">Fill</button>
+      <button class="btn xs" onclick="openPat(${r.idx})">Pat</button>
+      <button class="btn xs dan" onclick="clearRow(${r.idx})">✕</button>
+    </div>`}
+  rl.innerHTML=h
+}
+function focusRowToggle(ri){S.focusRow=(S.focusRow===ri?null:ri);updRowList();refreshOverlay()}
+function fillSelRow(ri){if(!S.selSpId){alert('Select a species first.');return}fillRow(ri,S.selSpId);updRowList()}
+
+// ═══ PATTERN EDITOR ═══
+function setPatDefaults(scope){
+  document.getElementById('pat-scope').value=scope;
+  document.getElementById('pat-startbound').checked=true;
+  document.getElementById('pat-skipends').checked=false;
+  document.getElementById('pat-offset').value=0;
+}
+function openPat(ri){S.editRowIdx=ri;S.patSteps=[];document.getElementById('pat-rnum').textContent='Row '+(ri+1);setPatDefaults('this');renderPatSteps();document.getElementById('mo-pat').classList.add('open')}
+function patternAll(){if(!S.rows.length){alert('Generate rows first.');return}S.editRowIdx=S.rows.length?S.rows[0].idx:0;S.patSteps=[];document.getElementById('pat-rnum').textContent='Multiple Rows';setPatDefaults('all');renderPatSteps();document.getElementById('mo-pat').classList.add('open')}
+function closePat(){document.getElementById('mo-pat').classList.remove('open')}
+function renderPatSteps(){
+  const body=document.getElementById('pat-steps');
+  if(!S.patSteps.length){body.innerHTML='<div style="font-size:9.5px;color:var(--dim);padding:8px">No steps. Select a species in the list, then Add Step.</div>';document.getElementById('pat-prev').textContent='—';return}
+  let h='';
+  for(let i=0;i<S.patSteps.length;i++){const st=S.patSteps[i],sp=getSp(st.speciesId),col=sp?(sp.color||scol(sp.strata)):'#888';
+    h+=`<div class="pstep"><div class="pdot" style="background:${hex2a(col,.4)};border:2px solid ${col}"></div>
+      <span class="psname">${escX(sp?sp.name:'Unknown')}</span><span style="font-size:9px;color:var(--dim)">→</span>
+      <input type="number" min=".1" step=".1" value="${parseFloat(st.spacing||1).toFixed(1)}" style="width:58px;font-size:9.5px" title="Gap to next plant (m)" oninput="S.patSteps[${i}].spacing=parseFloat(this.value)||1;renderPatSteps()">
+      <span style="font-size:8.5px;color:var(--dim)">m</span>
+      <button class="btn xs dan" onclick="S.patSteps.splice(${i},1);renderPatSteps()" style="margin-left:auto">✕</button></div>`}
+  body.innerHTML=h;
+  document.getElementById('pat-prev').textContent=S.patSteps.map(s=>{const sp=getSp(s.speciesId);return(sp?sp.name:'?')+' @'+s.spacing+'m'}).join(' → ')+' → (repeat)'
+}
+function addPatStep(){if(!S.selSpId){alert('Select a species in the list first.');return}const sp=getSp(S.selSpId);S.patSteps.push({speciesId:S.selSpId,spacing:sp?sp.targetRS:1});renderPatSteps()}
+function clearPatSteps(){S.patSteps=[];renderPatSteps()}
+function applyPat(){
+  if(!S.patSteps.length){closePat();return}
+  const scope=document.getElementById('pat-scope').value;
+  const startBound=document.getElementById('pat-startbound').checked;
+  const skipEnds=document.getElementById('pat-skipends').checked;
+  let offset=parseFloat(document.getElementById('pat-offset').value)||0;
+  if(!startBound&&offset===0){ // not anchored at boundary → default half-spacing phase shift
+    const sp0=getSp(S.patSteps[0].speciesId); const sp=parseFloat(S.patSteps[0].spacing)||(sp0?sp0.targetRS:1); offset=sp/2;
+  }
+  let targets;
+  if(scope==='all') targets=S.rows.map(r=>r.idx);
+  else if(scope==='A') targets=S.rows.filter(r=>rowAB(r)==='A').map(r=>r.idx);   // reference keyline + every 2nd line
+  else if(scope==='B') targets=S.rows.filter(r=>rowAB(r)==='B').map(r=>r.idx);   // the lines between
+  else targets=[S.editRowIdx];
+  if(!targets.length){alert('No rows match that selection.');return}
+  pushHist();
+  const opts={startOffset:offset,skipEnds};
+  for(const ri of targets) applyPatternToRow(ri,S.patSteps,opts);
+  closePat();refreshOverlay();updRowList();updSummary();autosave()
+}
+
+// ═══ TOOLS / MODE / DISPLAY ═══
+function setTool(t){
+  if((S.tool==='boundary'||S.tool==='keyline'||S.tool==='zone')&&t!==S.tool&&S.drawPts.length){S.drawPts=[]}
+  S.tool=t;S.selLineId=null;
+  ['place','boundary','orient','keyline','select','erase'].forEach(n=>{const el=document.getElementById('t-'+n);if(el)el.classList.toggle('active',n===t)});
+  const hints={place:'Click map to place selected species (snaps to nearest row)',boundary:'Click to add boundary vertices · double-click to close',orient:'Click two points along the desired row direction',keyline:'Click to trace keyline · double-click to finish',zone:'Click to outline a fill zone · double-click to close · then run Keyline Fill',select:'Click plant to delete · click keyline to select · Ctrl/Cmd+click keyline to offset',erase:'Click a tree to delete it · click a keyline (no tree under cursor) to erase it'};
+  document.getElementById('th').textContent=hints[t]||'';
+  document.getElementById('st-tool').textContent='Tool: '+t.charAt(0).toUpperCase()+t.slice(1);
+  if(S.map){const dz=(t==='boundary'||t==='keyline'||t==='zone');dz?S.map.doubleClickZoom.disable():S.map.doubleClickZoom.enable();
+    document.getElementById('map').style.cursor=(t==='select'||t==='erase')?'pointer':'crosshair'}
+  refreshOverlay()
+}
+function setFillMode(m){S.fillMode=m;document.getElementById('f-tgt').classList.toggle('active',m==='target');document.getElementById('f-des').classList.toggle('active',m==='design')}
+function toggleLabels(){S.labels=!S.labels;document.getElementById('t-labels').classList.toggle('active',S.labels);refreshOverlay();autosave()}
+function setSatOpacity(v){S.satOpacity=v/100;if(S.sat)S.sat.setOpacity(S.satOpacity);document.getElementById('sat-v').textContent=v+'%';autosave()}
+function gotoCoords(){const v=document.getElementById('goto').value.split(',').map(x=>parseFloat(x.trim()));if(v.length>=2&&!isNaN(v[0])&&!isNaN(v[1]))S.map.setView([v[0],v[1]],17);else alert('Enter coordinates as: lat, lng')}
+async function searchAddress(){
+  const q=document.getElementById('addr').value.trim();
+  if(!q){return}
+  const btn=document.getElementById('addr-btn');const prev=btn.textContent;btn.textContent='Searching…';btn.disabled=true;
+  try{
+    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q);
+    const res=await fetch(url,{headers:{'Accept':'application/json'}});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const j=await res.json();
+    if(j&&j.length){
+      const lat=parseFloat(j[0].lat),lon=parseFloat(j[0].lon);
+      S.map.setView([lat,lon],17);
+      flash('Found: '+(j[0].display_name||q));
+    }else{
+      alert('No match for that address. Try adding city/state, or use lat,lng instead.');
+    }
+  }catch(e){
+    alert('Address search failed ('+e.message+').\nYour browser may be offline or the geocoding service is unreachable. You can still pan the map or enter lat,lng.');
+  }finally{btn.textContent=prev;btn.disabled=false}
+}
+function flash(msg){const el=document.getElementById('th');el.textContent=msg}
+
+// offset modal
+function closeOff(){document.getElementById('mo-off').classList.remove('open')}
+
+// ═══ KEYBOARD ═══
+document.addEventListener('keydown',e=>{
+  if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;
+  if(e.ctrlKey||e.metaKey){if(e.key==='z'){e.preventDefault();undo()}if(e.key==='y'||(e.shiftKey&&e.key==='Z')){e.preventDefault();redo()}return}
+  if(e.key==='Escape'){S.drawPts=[];S.orientPts=[];S.selLineId=null;S.selContourId=null;refreshOverlay()}
+  if(e.key==='Delete'&&S.selLineId){pushHist();S.lines=S.lines.filter(l=>l.id!==S.selLineId);S.selLineId=null;S.selContourId=null;refreshOverlay();autosave()}
+  if(e.key==='p')setTool('place');if(e.key==='b')setTool('boundary');if(e.key==='o')setTool('orient');if(e.key==='k')setTool('keyline');if(e.key==='s')setTool('select');if(e.key==='e')setTool('erase')
+});
+
+// ═══ INIT ═══
+function init(){
+  initMap();
+  pushHist();
+  try{
+    const ssp=localStorage.getItem('sptd2-sp');
+    if(ssp){
+      let arr=JSON.parse(ssp);
+      const parsed=arr.filter(s=>!s.custom);
+      const broken=parsed.filter(s=>!s.name||s.name.trim().length<=1).length;
+      if(parsed.length&&broken/parsed.length>0.3){
+        // cache was built by the old parser (single-letter names) — discard, keep custom
+        arr=arr.filter(s=>s.custom);
+        try{localStorage.removeItem('sptd2-sp')}catch(e){}
+        S.species=arr;
+        const z=document.getElementById('upzone');
+        z.innerHTML='⚠ Please re-drop your Codex .md file<br><span style="font-size:8.5px;opacity:.7">(names update with this fix)</span>';
+      }else{
+        S.species=arr;
+        if(parsed.length){const z=document.getElementById('upzone');z.classList.add('ok');z.innerHTML=`✓ ${parsed.length} species (cached)<br><span style="font-size:8.5px;opacity:.7">Drop to reload from file</span>`}
+      }
+    }
+  }catch(e){}
+  loadLS();
+  ensurePlot(); syncPlotHeader();
+  renderSpList();renderPlotList();updRowList();updSummary();
+  setTimeout(()=>{S.map.invalidateSize();refreshOverlay()},200);
+  window.addEventListener('resize',()=>{S.map.invalidateSize();refreshOverlay()})
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+</script>
+</body>
+</html>
