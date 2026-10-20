@@ -127,8 +127,8 @@ onBeforeUnmount(() => seasonRO?.disconnect())
 
     <!-- the seasons: every month with its zodiac sign, across the top -->
     <div ref="seasonBar" class="season-bar" role="group" aria-label="Season">
-      <span class="m-now">
-        <b>{{ MONTH_NAMES[month - 1] }}</b> <span class="glyph" aria-hidden="true">{{ sign.glyph }}</span> {{ sign.name }}
+      <span class="m-now" :title="sign.name" :aria-label="`${MONTH_NAMES[month - 1]}, ${sign.name}`">
+        <b>{{ MONTH_NAMES[month - 1] }}</b> <span class="glyph" aria-hidden="true">{{ sign.glyph }}</span>
       </span>
       <button class="chip tiny" :class="{ on: playing }" :aria-label="playing ? 'Pause the seasons' : 'Play the year through'" @click="togglePlay">{{ playing ? '❚❚' : '▶' }}</button>
       <button v-if="d.ui.month !== null" class="chip tiny" title="Back to this month's live sky" @click="live">● Live</button>

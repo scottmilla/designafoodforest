@@ -708,22 +708,23 @@ html, body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hid
 .season-bar {
   position: absolute; top: var(--edge, 16px); left: 50%; transform: translateX(-50%); z-index: 650;
   width: clamp(280px, 34vw, 460px); display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .15rem .4rem;
-  padding: .45rem .9rem .4rem; background: #fff8e8ee; border: 3px solid var(--ink); border-radius: var(--r-soft); box-shadow: 0 4px 0 var(--ink);
+  padding: .3rem .75rem .3rem; background: #fff8e8b3; border: 2px solid #3b2a1a99; border-radius: var(--r-soft); box-shadow: 0 2px 0 #3b2a1a55;
+  backdrop-filter: blur(3px);
 }
-.season-bar .m-now { font-family: var(--font-display); font-size: 1.1rem; white-space: nowrap; }
-.season-bar .glyph { color: var(--violet); }
-.season-bar .chip.tiny { margin: 0; }
+.season-bar .m-now { font-family: var(--font-display); font-size: .95rem; white-space: nowrap; }
+.season-bar .glyph, .season-bar .zodiac i { color: var(--violet); font-family: 'Apple Symbols', 'Segoe UI Symbol', 'Noto Sans Symbols', 'DejaVu Sans', sans-serif; }
+.season-bar .chip.tiny { margin: 0; font-size: .72rem; padding: .1em .55em; box-shadow: 0 2px 0 var(--ink); }
 .season-bar input { grid-column: 1 / -1; accent-color: var(--violet); width: 100%; }
 .season-bar .zodiac { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, 1fr); margin-top: -.1rem; }
 .season-bar .zodiac button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); display: grid; justify-items: center; line-height: 1; opacity: .55; }
-.season-bar .zodiac button i { font-style: normal; font-size: .9rem; }
+.season-bar .zodiac button i { font-style: normal; font-size: .8rem; }
 .season-bar .zodiac button small { font-size: .62rem; display: block; }
 .season-bar .zodiac button.now small { text-decoration: underline; }
 .season-bar .zodiac button.on { opacity: 1; color: var(--violet); font-weight: 700; }
 /* narrower windows: no room beside the place card and tools, so the bar spans the top and they move down under it */
 @media (max-width: 1100px) {
   .season-bar { left: var(--edge, 10px); right: var(--edge, 10px); transform: none; width: auto; padding: .3rem .7rem .3rem; }
-  .season-bar .m-now { font-size: 1rem; }
+  .season-bar .m-now { font-size: .9rem; }
   .stage-forest .climate, .stage-forest .tools, .stage-forest .system.harvest { top: calc(var(--edge, 10px) + var(--season-h, 96px)) !important; }
 }
 

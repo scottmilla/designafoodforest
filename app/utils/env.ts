@@ -57,10 +57,11 @@ const smooth = (a: number, b: number, x: number) => {
 }
 
 // The twelve months with the sign of the zodiac the sun is in for most of each (tropical zodiac).
+// Each glyph carries U+FE0E so it draws as a plain text symbol, not a coloured emoji tile.
 export const ZODIAC: { glyph: string; name: string }[] = [
-  { glyph: '♑', name: 'Capricorn' }, { glyph: '♒', name: 'Aquarius' }, { glyph: '♓', name: 'Pisces' }, { glyph: '♈', name: 'Aries' },
-  { glyph: '♉', name: 'Taurus' }, { glyph: '♊', name: 'Gemini' }, { glyph: '♋', name: 'Cancer' }, { glyph: '♌', name: 'Leo' },
-  { glyph: '♍', name: 'Virgo' }, { glyph: '♎', name: 'Libra' }, { glyph: '♏', name: 'Scorpio' }, { glyph: '♐', name: 'Sagittarius' },
+  { glyph: '♑\uFE0E', name: 'Capricorn' }, { glyph: '♒\uFE0E', name: 'Aquarius' }, { glyph: '♓\uFE0E', name: 'Pisces' }, { glyph: '♈\uFE0E', name: 'Aries' },
+  { glyph: '♉\uFE0E', name: 'Taurus' }, { glyph: '♊\uFE0E', name: 'Gemini' }, { glyph: '♋\uFE0E', name: 'Cancer' }, { glyph: '♌\uFE0E', name: 'Leo' },
+  { glyph: '♍\uFE0E', name: 'Virgo' }, { glyph: '♎\uFE0E', name: 'Libra' }, { glyph: '♏\uFE0E', name: 'Scorpio' }, { glyph: '♐\uFE0E', name: 'Sagittarius' },
 ]
 
 // monthOverride: the season slider in the forest. A chosen month shows that month's typical sky (fair, with snow
