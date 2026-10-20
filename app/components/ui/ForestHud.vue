@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { fmtTemp } from '~/utils/fmt'
+import { fmtTemp, MONTH_NAMES } from '~/utils/fmt'
+import { localNow, ZODIAC } from '~/utils/env'
 import { plantGrowth } from '~/utils/growth'
 
 // Standing in the design: walk it, scrub the years to watch succession, look from above, go back to the map.
@@ -57,8 +58,32 @@ function faceNorth() {
   player.yawTarget = Math.round(player.yaw / (Math.PI * 2)) * Math.PI * 2
 }
 function back() {
+  stopPlay()
   d.exitForest({ x: player.x, z: player.z })
 }
+// ── the season slider: every month with its zodiac sign; ▶ plays the year through ──
+const liveMonth = computed(() => (d.clock.value, localNow(d.weather.value).month))
+const month = computed({
+  get: () => d.ui.month ?? liveMonth.value,
+  set: (m: number) => (d.ui.month = m),
+})
+const sign = computed(() => ZODIAC[month.value - 1]!)
+const playing = ref(false)
+let playTimer: ReturnType<typeof setInterval> | undefined
+function stopPlay() {
+  clearInterval(playTimer)
+  playing.value = false
+}
+function togglePlay() {
+  if (playing.value) return stopPlay()
+  playing.value = true
+  playTimer = setInterval(() => (month.value = (month.value % 12) + 1), 1400)
+}
+function live() {
+  stopPlay()
+  d.ui.month = null
+}
+onBeforeUnmount(stopPlay)
 </script>
 
 <template>
@@ -69,7 +94,8 @@ function back() {
       <p v-if="d.site.value" class="zone"><b>Zone {{ d.site.value.zoneLabel }}</b> · {{ d.scene.value.plants.length.toLocaleString() }} plants</p>
       <p class="now">
         {{ d.ui.forceDay ? '☀️' : d.env.value.icon }}
-        <template v-if="d.weather.value && !d.ui.forceDay">{{ fmtTemp(d.weather.value.tempC, d.imperial.value) }} · {{ d.env.value.label }}</template>
+        <template v-if="d.ui.month !== null">{{ MONTH_NAMES[month - 1] }}, as it usually looks</template>
+        <template v-else-if="d.weather.value && !d.ui.forceDay">{{ fmtTemp(d.weather.value.tempC, d.imperial.value) }} · {{ d.env.value.label }}</template>
         <template v-else>Daylight preview</template>
       </p>
       <p class="meta">{{ clock }} · <span class="season">{{ seasonText }}</span></p>
@@ -91,9 +117,13 @@ function back() {
 
     <div class="tools">
       <button class="chip back" @click="back">🛰 Back to the map</button>
-      <button class="chip" :class="{ on: d.ui.birdseye }" @click="d.ui.birdseye = !d.ui.birdseye; d.selected.value = null">🦅 Bird's-eye</button>
+      <div class="row">
+        <button class="chip" :class="{ on: d.ui.birdseye }" @click="d.ui.birdseye = !d.ui.birdseye; d.selected.value = null">🦅 Bird's-eye</button>
+        <button v-if="d.ui.birdseye" class="chip" :class="{ on: d.ui.lockOn }" :aria-pressed="d.ui.lockOn" title="Lock the camera on the gardener: the arrow keys walk them around under you" @click="d.ui.lockOn = !d.ui.lockOn">🎯 Lock on</button>
+      </div>
       <button class="chip" :class="{ on: d.ui.satGround }" @click="d.ui.satGround = !d.ui.satGround">{{ d.ui.satGround ? '🛰 Photo ground' : '🎨 Painted ground' }}</button>
       <button class="chip" :class="{ on: d.ui.harvest }" @click="d.ui.harvest = !d.ui.harvest">📊 Harvest</button>
+      <UnitsToggle />
       <div class="orbit" role="group" aria-label="Rotate the view">
         <button class="chip" aria-label="Rotate left" @pointerdown.prevent="d.input.rotL = true" @pointerup="d.input.rotL = false" @pointerleave="d.input.rotL = false" @pointercancel="d.input.rotL = false">◀</button>
         <button class="chip" :class="{ on: d.ui.autoOrbit }" aria-label="Slow auto-orbit" :aria-pressed="d.ui.autoOrbit" @click="d.ui.autoOrbit = !d.ui.autoOrbit">🎥</button>
@@ -110,7 +140,21 @@ function back() {
           <i><b :style="{ width: crownPct + '%' }" /></i>
         </div>
         <small>{{ yearNote }}</small>
-        <small class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> walk · <kbd>←</kbd><kbd>→</kbd> turn the camera · scroll to zoom · click a plant</small>
+        <div class="months">
+          <span class="m-now">
+            <b>{{ MONTH_NAMES[month - 1] }}</b> <span class="glyph" aria-hidden="true">{{ sign.glyph }}</span> {{ sign.name }}
+          </span>
+          <button class="chip tiny" :class="{ on: playing }" :aria-label="playing ? 'Pause the seasons' : 'Play the year through'" @click="togglePlay">{{ playing ? '❚❚' : '▶' }}</button>
+          <button v-if="d.ui.month !== null" class="chip tiny" title="Back to this month's live sky" @click="live">● Live</button>
+          <input v-model.number="month" type="range" min="1" max="12" step="1" aria-label="Month of the year" @pointerdown="stopPlay">
+          <div class="zodiac" aria-hidden="true">
+            <button v-for="(z, i) in ZODIAC" :key="i" :class="{ on: month === i + 1, now: liveMonth === i + 1 }" :title="`${MONTH_NAMES[i]} · ${z.name}`" tabindex="-1" @click="stopPlay(); month = i + 1">
+              <i>{{ z.glyph }}</i><small>{{ MONTH_NAMES[i]![0] }}</small>
+            </button>
+          </div>
+        </div>
+        <small v-if="d.ui.birdseye" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> walk{{ d.ui.lockOn ? ' (camera follows)' : '' }} · <kbd>Q</kbd><kbd>E</kbd> turn · scroll to zoom · click a plant</small>
+        <small v-else class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> walk · <kbd>←</kbd><kbd>→</kbd> turn the camera · scroll to zoom · click a plant</small>
         <small class="for-touch">Tap to walk · ◀ ▶ to spin · tap a plant</small>
       </div>
     </div>

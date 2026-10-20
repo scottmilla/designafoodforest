@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { longestEdgeAngle } from '~/utils/geo'
-import { fmtLen } from '~/utils/fmt'
+import { fmtDist, fromUnit, lenUnit, toUnit } from '~/utils/fmt'
 
 // Step 2: the lines everything gets planted on. Straight rows redraw live as you move the sliders;
 // contour rows are offset from a keyline you trace along the slope.
@@ -33,10 +33,11 @@ const bearing = computed(() => {
       <button class="chip" :class="{ on: d.rowMode.value === 'keyline' }" @click="d.setRowMode('keyline')">〰 Follow the slope</button>
     </div>
 
-    <h3>Row spacing · <b>{{ d.plot.rowSpacing }} m</b> <small v-if="d.imperial.value">({{ fmtLen(d.plot.rowSpacing, true) }})</small></h3>
-    <input :value="d.plot.rowSpacing" type="range" min="1" max="20" step="0.5" class="range" aria-label="Row spacing" @input="d.setRowSpacing(+($event.target as HTMLInputElement).value)">
+    <h3>Row spacing · <b>{{ fmtDist(d.plot.rowSpacing, d.imperial.value) }}</b> <small>({{ fmtDist(d.plot.rowSpacing, !d.imperial.value) }})</small></h3>
+    <input v-if="d.imperial.value" :value="Math.round(toUnit(d.plot.rowSpacing, true))" type="range" min="3" max="66" step="1" class="range" aria-label="Row spacing in feet" @input="d.setRowSpacing(fromUnit(+($event.target as HTMLInputElement).value, true))">
+    <input v-else :value="d.plot.rowSpacing" type="range" min="1" max="20" step="0.5" class="range" aria-label="Row spacing in metres" @input="d.setRowSpacing(+($event.target as HTMLInputElement).value)">
     <div class="presets">
-      <button v-for="p in PRESETS" :key="p.m" class="chip tiny" :class="{ on: d.plot.rowSpacing === p.m }" :title="p.sub" @click="d.setRowSpacing(p.m)">{{ p.m }} m · {{ p.label }}</button>
+      <button v-for="p in PRESETS" :key="p.m" class="chip tiny" :class="{ on: d.plot.rowSpacing === p.m }" :title="p.sub" @click="d.setRowSpacing(p.m)">{{ fmtDist(p.m, d.imperial.value) }} · {{ p.label }}</button>
     </div>
 
     <template v-if="d.rowMode.value === 'straight'">
@@ -65,7 +66,7 @@ const bearing = computed(() => {
         <div class="kstep">
           <i>2</i>
           <div>
-            <b>Fill the land</b> with rows offset from it every {{ d.plot.rowSpacing }} m.
+            <b>Fill the land</b> with rows offset from it every {{ fmtDist(d.plot.rowSpacing, d.imperial.value) }}.
             <button class="btn btn-primary wide gap-top" :disabled="!keylines.length" @click="d.fillFromKeyline({ append, includeBase })">〰 Fill from keyline</button>
           </div>
         </div>
@@ -85,7 +86,7 @@ const bearing = computed(() => {
     </template>
 
     <div class="picker-status">
-      <span>{{ d.plot.rows.length }} rows · {{ Math.round(d.rowMetres.value).toLocaleString() }} m of planting line</span>
+      <span>{{ d.plot.rows.length }} rows · {{ Math.round(toUnit(d.rowMetres.value, d.imperial.value)).toLocaleString() }} {{ lenUnit(d.imperial.value) }} of planting line</span>
     </div>
     <p v-if="d.plot.plants.length" class="fine">Your {{ d.plot.plants.length.toLocaleString() }} plants stay where they are when rows move. Undo with ↩.</p>
     <button class="btn btn-primary wide gap-top" :disabled="!d.plot.rows.length" @click="d.step.value = 'plant'; d.setTool(d.selSpId.value ? 'place' : 'pan')">Next: plant →</button>

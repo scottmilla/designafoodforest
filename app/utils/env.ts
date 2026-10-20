@@ -56,19 +56,32 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t)
 }
 
-export function computeEnv(site: Site | null, w: Weather | null, forceDay = false): Env {
-  const { hour, month } = localNow(w)
+// The twelve months with the sign of the zodiac the sun is in for most of each (tropical zodiac).
+export const ZODIAC: { glyph: string; name: string }[] = [
+  { glyph: '♑', name: 'Capricorn' }, { glyph: '♒', name: 'Aquarius' }, { glyph: '♓', name: 'Pisces' }, { glyph: '♈', name: 'Aries' },
+  { glyph: '♉', name: 'Taurus' }, { glyph: '♊', name: 'Gemini' }, { glyph: '♋', name: 'Cancer' }, { glyph: '♌', name: 'Leo' },
+  { glyph: '♍', name: 'Virgo' }, { glyph: '♎', name: 'Libra' }, { glyph: '♏', name: 'Scorpio' }, { glyph: '♐', name: 'Sagittarius' },
+]
+
+// monthOverride: the season slider in the forest. A chosen month shows that month's typical sky (fair, with snow
+// lying in winter where the site's winters are hard) instead of today's live weather.
+export function computeEnv(site: Site | null, w: Weather | null, forceDay = false, monthOverride: number | null = null): Env {
+  const live = localNow(w)
+  const hour = live.hour
+  const month = monthOverride ?? live.month
+  const preview = monthOverride !== null
   const rise = w ? hourOf(w.sunrise) : 6.5
   const set = w ? hourOf(w.sunset) : 18.5
   const h = forceDay ? 13 : hour
   const day = smooth(rise - 0.6, rise + 0.8, h) * (1 - smooth(set - 0.8, set + 0.6, h))
   const dusk = forceDay ? 0 : Math.max(Math.exp(-((h - rise) ** 2) / 0.7), Math.exp(-((h - set) ** 2) / 0.7))
-  const code = forceDay ? 0 : (w?.code ?? 1)
+  const code = forceDay ? 0 : preview ? 1 : (w?.code ?? 1)
   const [label, icon] = weatherLabel(code)
   const rain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95 ? (code >= 63 || code >= 81 ? 1 : 0.5) : 0
-  const snow = (code >= 71 && code <= 77) || code === 85 || code === 86 ? 1 : 0
-  const overcast = Math.min(1, Math.max(forceDay ? 0 : (w?.cloud ?? 30) / 100 - 0.2, rain || snow ? 0.8 : 0, code === 3 ? 0.75 : 0) * 1)
   const south = (site?.lat ?? 40) < 0
+  const hardWinter = preview && seasonFor(month, south) === 'winter' && (site?.minTempC ?? 0) < -9 && site?.climate !== 'arid'
+  const snow = (code >= 71 && code <= 77) || code === 85 || code === 86 ? 1 : hardWinter ? 0.5 : 0
+  const overcast = Math.min(1, Math.max(forceDay || preview ? 0 : (w?.cloud ?? 30) / 100 - 0.2, rain || snow ? 0.8 : 0, code === 3 ? 0.75 : 0) * 1)
   const lat = Math.abs(site?.lat ?? 40)
   const dayFrac = Math.min(1, Math.max(0, (h - rise) / Math.max(1, set - rise)))
   const decl = 23.4 * Math.cos(((month - 6.5) / 12) * Math.PI * 2) * (south ? -1 : 1)

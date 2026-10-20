@@ -4,14 +4,15 @@ Written so you can run, change and deploy the app without help. Skim section 1, 
 
 ## 1. The shape of the app
 
-One Nuxt 4 project: a static single-page app (`ssr: false`) plus two tiny server routes.
+One Nuxt 4 project: a static single-page app (`ssr: false`) plus a few small server routes.
 
 ```
 browser (does nearly all the work)                         server (Vercel functions)
 ─────────────────────────────────                          ─────────────────────────
-Intro → Map (Leaflet + our canvas) → Forest (three.js)     /api/geocode  → OpenStreetMap Nominatim
+Intro → Map (Leaflet + our canvas) → Forest (three.js)     /api/geocode (+ /suggest) → Esri World Geocoder, OSM fallback
 all state in app/composables/useDesign.ts                  /api/climate  → Open-Meteo (10-yr history + weather)
-designs saved in localStorage; files via JSON / KML
+designs saved in localStorage; files via JSON / KML        /api/species  → MongoDB if connected, else the bundled library
+/admin: the species library editor                         /api/admin/*  → sign-in + species edits (MongoDB)
 ```
 
 | Where | What |
@@ -21,6 +22,10 @@ designs saved in localStorage; files via JSON / KML
 | `app/utils/suggest.ts` | **Suggest a design**: the ported goal-scoring engine (section 2). |
 | `app/utils/library.ts` | The species library API: strata, site-fit rules (`fitFor`), crown width and clearance rules, yield curves, Byron id mapping. |
 | `app/utils/growth.ts` | How plants grow with the year slider, when they're thinned, how crowns lift. |
+| `app/utils/support.ts` | The support layer: which nitrogen / biomass / pioneer species suit the site per stratum, and how densely. Placed by `plantSupport` in `useDesign.ts`; those plants carry `role: 'support'`. |
+| `app/components/ui/PlotBar.vue` | Several plots per design (Byron's multi-plot model). The active plot lives in `plot`; `plots` holds them all; `commitActive` / `loadPlot` swap them. |
+| `app/pages/admin.vue`, `server/api/admin/*`, `server/utils/db.ts`, `shared/speciesSchema.ts` | The species admin panel, its MongoDB storage, and the one validator both sides use. |
+| `server/utils/geocoders.ts`, `addressText.ts` | Address search: Esri first (real address points for rural US / NZ), OpenStreetMap second, NZ "RD n" and unit clean-up, ranking. |
 | `app/utils/paint.ts` | Draws the design over the satellite photo (canvas). |
 | `app/components/map/DesignMap.vue` | Leaflet map, click handling per tool, the zoom-in-to-dive. |
 | `app/components/scene/*` | The 3D world (sky, ground, plants, gardener, camera). `FarmPlants.vue` draws the plants, `CameraRig.vue` the camera, `GroundTap.vue` clicks. |
@@ -75,7 +80,8 @@ What was *not* ported from the engine: its generated layout (invented rectangle,
 What will actually limit you, in the order you'll hit them:
 
 1. **Third-party services (the real ceiling).**
-   - *OpenStreetMap Nominatim* (addresses): policy is ~1 request per second, identify yourself, no heavy commercial use. The code spaces requests, caches answers and sends `NUXT_CONTACT_EMAIL`, but a busy public launch needs a paid geocoder (Mapbox, Geoapify, Google). Swap the body of `server/api/geocode.get.ts`; nothing else changes.
+   - *Esri World Geocoder* (addresses and the type-ahead): used anonymously unless `NUXT_ARCGIS_KEY` is set. Anonymous use is fine for a design tool; for a commercial product get an ArcGIS location-services key (it has a free monthly tier) and set it. Saving designs that contain a geocoded point counts as "stored" geocoding in Esri's terms, so the key matters once this is a product.
+   - *OpenStreetMap Nominatim* (fallback and reverse lookups for typed coordinates): ~1 request per second, identify yourself, no heavy commercial use. The code spaces requests and sends `NUXT_CONTACT_EMAIL`. Swap providers in `server/utils/geocoders.ts`; nothing else changes.
    - *Open-Meteo* (climate): free for non-commercial use with daily limits; commercial use needs their paid plan. It sometimes answers "overloaded"; the app handles that (design works without live weather, zone falls back to a latitude estimate).
    - *Esri World Imagery* (satellite photo, loaded straight from the browser): check Esri's terms for your use. A commercial product normally needs an ArcGIS licence or another imagery provider (Mapbox, MapTiler, Google). Change the tile URL in `DesignMap.vue` and `SatGround.vue`. It is only sharp to zoom 19; the 3D ground reuses the same tiles.
    - *Vercel Hobby* is for non-commercial use; a product needs Pro.
@@ -87,7 +93,12 @@ What will actually limit you, in the order you'll hit them:
 
 1. Put the project on GitHub (`git add -A && git commit`, push). `.env` is already ignored.
 2. In Vercel: *Add New → Project → import the repo*. It detects Nuxt; leave the build command (`npm run build`) and output as default. Node 20+ is required (`engines` is set).
-3. Settings → Environment Variables: `NUXT_CONTACT_EMAIL` = your email (optional but recommended; see `.env.example`).
+3. Settings → Environment Variables (all optional, see `.env.example`):
+   - `NUXT_CONTACT_EMAIL`: your email, for OpenStreetMap.
+   - `NUXT_ARCGIS_KEY`: ArcGIS key for the address search (recommended for commercial use).
+   - `NUXT_MONGODB_URI` (+ `NUXT_MONGODB_DB`): the species database. MongoDB Atlas: create a free cluster, a database user, allow network access from `0.0.0.0/0` (Vercel's IPs change), copy the connection string.
+   - `NUXT_ADMIN_PASSWORD`: the password for `/admin`. Without it the admin panel stays closed. `NUXT_SESSION_SECRET` (32+ random characters) signs its cookie.
+   - First time with a database: open `/admin`, sign in, press **Copy the bundled library into the database**. Until then (or with no database) everyone gets the bundled library, exactly as before.
 4. Deploy. Check: the title loads, an address flies the map, tracing land works, *Step inside* shows the forest.
 
 What `nuxt.config.ts` sets up for it: the app shell is a prerendered static file (fast, no function call), API answers are cached (`routeRules`), hashed assets cache for a year, and basic security headers are sent. `NITRO_PRESET=vercel npm run build` reproduces the Vercel build locally (output in `.vercel/output`, ignored by git).
@@ -96,7 +107,9 @@ Before going public: confirm you have **permission to publish Byron Austin's Cod
 
 ## 5. Common changes
 
-**Add or edit a species.** Codex species: edit its card in `data/SPECIES_DATA_LIBRARY.md` (keep the `**Strata:**`, `**Dimensions:**`, `**Target RS:**` line formats). Zones, yields, prices, colours, form: `data/pff-species.ts`, and make sure the Codex name maps to it in `MATCH` in `scripts/build-library.ts` (`look:` borrows only colour and form). Then `npm run library`, `npm test`, commit `shared/library.json`.
+**Add or edit a species (with a database): `/admin`.** Sign in, pick a species, edit, Save. New species: ＋ New species (or Duplicate a similar one). Every field is checked by `shared/speciesSchema.ts`. The designer picks changes up within about 30 seconds (`/api/species` is cached that long). Ids never change once made: saved designs refer to them. **Export JSON** in the admin panel is your backup.
+
+**Add or edit a species (without a database, or to change what ships).** Codex species: edit its card in `data/SPECIES_DATA_LIBRARY.md` (keep the `**Strata:**`, `**Dimensions:**`, `**Target RS:**` line formats). Zones, yields, prices, colours, form: `data/pff-species.ts`, and make sure the Codex name maps to it in `MATCH` in `scripts/build-library.ts` (`look:` borrows only colour and form). Then `npm run library`, `npm test`, commit `shared/library.json`.
 
 **A genus card is too tender or too hardy** (e.g. citrus): add it to `HARDY_END` in the build script. **A price looks wrong:** `PRICE_FIX` in the same file, or edit `price` in `pff-species.ts`.
 

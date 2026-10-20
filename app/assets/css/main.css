@@ -686,3 +686,63 @@ html, body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hid
 .why { margin-top: .4rem; font-size: .88rem; }
 .why summary { cursor: pointer; font-weight: 700; color: var(--violet); }
 .why ul { margin: .3rem 0 0; padding-left: 1.1rem; display: grid; gap: .3rem; line-height: 1.3; }
+
+/* m / ft: one pill split in two */
+.units.seg { margin: 0; gap: 0; flex-wrap: nowrap; }
+.units .chip.tiny { margin: 0; font-size: .85rem; padding: .35em .7em; }
+.units .chip:first-child { border-radius: 99px 0 0 99px; border-right-width: 1px; }
+.units .chip:last-child { border-radius: 0 99px 99px 0; border-left-width: 1px; }
+
+/* address box + type-ahead (in the flow of the card, so a scrolling card never clips it) */
+.addr { display: grid; gap: .45rem; }
+.addr .big-field { margin-bottom: 0; }
+.addr-box { position: relative; }
+.addr-list { list-style: none; margin: .3rem 0 0; padding: .3rem; display: grid; gap: .1rem; box-shadow: 0 4px 0 var(--ink); max-height: none; overflow: visible; }
+.addr-list li { padding: .45em .6em; border-radius: 10px; cursor: pointer; font-size: .92rem; line-height: 1.25; }
+.addr-list li.hi, .addr-list li:hover { background: var(--sun); }
+.alts { margin-top: .35rem; font-size: .85rem; }
+.alts summary { cursor: pointer; font-weight: 700; color: var(--violet); }
+.alts .option { width: 100%; text-align: left; font-size: .82rem; padding: .35em .55em; margin-top: .25rem; white-space: normal; }
+
+/* the season slider: month + zodiac sign, the twelve signs as stops under it */
+.timeline .months { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .15rem .4rem; margin-top: .35rem; padding-top: .4rem; border-top: 2px dashed #3b2a1a33; }
+.timeline .months .m-now { font-size: 1.05rem; }
+.timeline .months .glyph { color: var(--violet); }
+.timeline .months .chip.tiny { margin: 0; }
+.timeline .months input { grid-column: 1 / -1; }
+.timeline .zodiac { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, 1fr); margin-top: -.1rem; }
+.timeline .zodiac button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); display: grid; justify-items: center; line-height: 1; opacity: .55; }
+.timeline .zodiac button i { font-style: normal; font-size: .9rem; }
+.timeline .zodiac button small { grid-column: auto; font-size: .62rem; opacity: 1; display: block; }
+.timeline .zodiac button.now small { text-decoration: underline; }
+.timeline .zodiac button.on { opacity: 1; color: var(--violet); font-weight: 700; }
+
+/* the support layer: one line per stratum, a species picker on each */
+.recipe.support { background: #f3f9ecaa; }
+.recipe.support.open { background: #f6fbf0; }
+.recipe-body .frows.sup-picks li { grid-template-columns: 1.6rem minmax(0, 5.5rem) minmax(0, 1fr); }
+.sup-picks select.field { width: 100%; }
+
+/* the plot switcher, at the top of the step card */
+.plotbar { margin: -.2rem 0 .55rem; border: 2px dashed #3b2a1a55; border-radius: var(--r-soft); background: #fffdf6aa; }
+.plotbar.open { border-style: solid; border-color: var(--ink); background: #fffdf6; }
+.plot-cur { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: .5rem; font: inherit; color: var(--ink); background: none; border: 0; padding: .35em .7em; cursor: pointer; }
+.plot-cur b { font-family: var(--font-display); font-weight: 400; font-size: 1.02rem; }
+.plot-cur small { opacity: .65; }
+.plot-menu { padding: 0 .6rem .7rem; display: grid; gap: .5rem; }
+.plot-items { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.plot-items li { display: grid; grid-template-columns: 2rem minmax(0, 1fr) 2rem; align-items: center; gap: .3rem; border: 2px solid #3b2a1a44; border-radius: 12px; padding: .15rem .25rem; }
+.plot-items li.act { border-color: var(--ink); background: color-mix(in srgb, var(--sun) 30%, #fffdf6); }
+.plot-items button { font: inherit; color: var(--ink); background: none; border: 0; cursor: pointer; padding: .2em; }
+.plot-items .pname { display: grid; text-align: left; line-height: 1.15; min-width: 0; }
+.plot-items .pname b { font-size: .95rem; }
+.plot-items .pname em { font-weight: 500; font-size: .78rem; opacity: .7; }
+.plot-items .pname small { font-size: .74rem; opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plot-items .eye:disabled { opacity: .5; cursor: default; }
+.plot-items .del { opacity: .55; }
+.plot-items .del:hover { opacity: 1; color: #b3261e; }
+
+/* per-design canopy width (Byron's canopy overrides) */
+.canopy-ed { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; font-size: .85rem; font-weight: 600; }
+.canopy-ed .field.num { width: 4.6rem; padding: .3em .5em; }
+.canopy-ed .chip.tiny { margin: 0; }

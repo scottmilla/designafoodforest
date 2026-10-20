@@ -119,7 +119,7 @@ const noPrices = computed(() => value.value && model.value.table.some((r) => !r.
             </tr>
           </tbody>
         </table>
-        <label class="optin">Estimate for crops with no yield data: <input v-model.number="d.dash.density" class="field mini" type="number" min="0" step="0.1"> kg per m² of crown</label>
+        <label class="optin">Estimate for crops with no yield data: <input :value="Math.round(d.dash.density * (d.imperial.value ? 0.2048 : 1) * 100) / 100" class="field mini" type="number" min="0" step="0.05" @change="d.dash.density = Math.max(0, +($event.target as HTMLInputElement).value / (d.imperial.value ? 0.2048 : 1))"> {{ d.imperial.value ? 'lb per sq ft' : 'kg per m²' }} of crown</label>
       </div>
       <p v-if="model.crowded.length" class="fine">🌳 Over its canopy share: {{ model.crowded.join(', ') }} of the land. Yields scaled down to match the light (Codex: E 20%, H 40%, M 60%, L 80%).</p>
       <p v-if="noPrices" class="fine">Some crops have no price yet: add one above to count them in Value.</p>

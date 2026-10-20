@@ -52,7 +52,8 @@ function render() {
   const P = (ll: LL) => map!.latLngToContainerPoint([ll.lat, ll.lng])
   paint(ctx, size.x, size.y, P, m, {
     plot: { ...toRaw(d.plot), plants: toRaw(d.plot.plants) },
-    lib: libById, fits: d.fits.value, labels: d.ui.labels, tool: d.tool.value, step: d.step.value === 'rows' && d.rowMode.value === 'straight' ? 'rows' : d.step.value,
+    others: d.otherPlots.value.map((p) => ({ name: p.name, data: p.data })),
+    lib: libById, fits: d.fits.value, labels: d.ui.labels, showSupport: d.ui.showSupport, tool: d.tool.value, step: d.step.value === 'rows' && d.rowMode.value === 'straight' ? 'rows' : d.step.value,
     drawPts: d.drawPts.value, orientPts: d.orientPts.value, mouse, ghost, focusRow: d.focusRow.value, inspect: d.inspect.value,
   })
 }
@@ -101,8 +102,12 @@ function onClick(e: L.LeafletMouseEvent) {
       }
       break
     }
-    default:
+    default: {
       d.inspectAt(ll, tol)
+      // nothing of this plot under the finger, but another plot's land: edit that one
+      const other = d.inspect.value ? null : d.plotAt(ll)
+      if (other) d.activatePlot(other)
+    }
   }
   refresh()
 }
@@ -196,7 +201,7 @@ onBeforeUnmount(() => {
   map = null
 })
 
-watch([d.version, d.tool, d.drawPts, d.orientPts, d.selSpId, () => d.ui.labels, d.focusRow, d.inspect, d.step, d.rowMode, d.fits], refresh)
+watch([d.version, d.tool, d.drawPts, d.orientPts, d.selSpId, () => d.ui.labels, () => d.ui.showSupport, d.focusRow, d.inspect, d.step, d.rowMode, d.fits], refresh)
 watch(() => d.ui.sat, (o) => sat?.setOpacity(o))
 watch(d.tool, (t) => {
   if (!el.value) return
@@ -204,6 +209,11 @@ watch(d.tool, (t) => {
 })
 // a fresh boundary: frame it, leaving room for the step card on the right
 watch(d.fitRequest, () => fit())
+// a new address while on the map: fly there
+watch(d.flyRequest, () => {
+  const v = d.mapView.value
+  if (map && v) map.flyTo([v.lat, v.lng], v.zoom, { duration: 1.6 })
+})
 // another design opened while the map is up: show it as it was saved, or frame its land
 watch(d.geo, () => {
   if (!map) return

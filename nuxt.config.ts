@@ -10,9 +10,15 @@ export default defineNuxtConfig({
     optimizeDeps: { include: ['three', '@tresjs/core', 'leaflet', 'three/examples/jsm/utils/BufferGeometryUtils.js'] },
   },
   devtools: { enabled: false },
-  // Override with NUXT_* env vars (see .env.example). Nothing here is secret: there are no API keys in this app.
+  // Override with NUXT_* env vars (see .env.example). The defaults here are empty; real values (the database URI, the
+  // admin password) only ever live in env vars, never in this file.
   runtimeConfig: {
     contactEmail: '', // NUXT_CONTACT_EMAIL — sent to OpenStreetMap's Nominatim as identification, as its usage policy asks
+    arcgisKey: '', // NUXT_ARCGIS_KEY — optional ArcGIS location-services key for the address search (anonymous use works without it)
+    mongodbUri: '', // NUXT_MONGODB_URI — the species database (MongoDB / Atlas). Unset: the bundled library is used and /admin is read-only
+    mongodbDb: 'designafoodforest', // NUXT_MONGODB_DB
+    adminPassword: '', // NUXT_ADMIN_PASSWORD — the password for /admin (the species library editor). Unset: /admin stays closed
+    sessionSecret: '', // NUXT_SESSION_SECRET — 32+ random characters to sign the admin cookie (optional; derived from the password otherwise)
   },
   // The app is a static single-page app (ssr: false) plus two small server routes. Vercel runs the routes as
   // serverless functions and serves the rest from its CDN; the preset is detected automatically.
@@ -20,6 +26,8 @@ export default defineNuxtConfig({
     '/': { prerender: true }, // the SPA shell is a static file on the CDN, not a function call
     '/api/geocode': { swr: 60 * 60 * 24, headers: { 'cache-control': 'public, max-age=3600' } }, // an address doesn't move
     '/api/climate': { swr: 60 * 10 }, // ten-year climate is cached longer inside the route; today's weather isn't
+    '/api/species': { swr: 30 }, // the library changes only when someone edits it in /admin
+    '/api/admin/**': { headers: { 'cache-control': 'no-store' } },
     '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/**': { headers: { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-frame-options': 'SAMEORIGIN' } },
   },

@@ -12,7 +12,8 @@ const armL = ref<any>(null)
 const armR = ref<any>(null)
 const ring = ref<any>(null)
 
-// ↑ ↓ (and W S) walk forward and back; ← → spin the camera; A D sidestep; + − zoom
+// ↑ ↓ (and W S) walk forward and back; ← → spin the camera; A D sidestep; + − zoom.
+// In bird's-eye the camera is locked, so all four arrows walk (← → step left and right).
 const keyMap: Record<string, 'forward' | 'back' | 'left' | 'right'> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'back', ArrowDown: 'back', KeyA: 'left', KeyD: 'right',
 }
@@ -30,6 +31,14 @@ function onKey(down: boolean) {
     }
     if (e.code === 'KeyQ' || e.code === 'KeyE') {
       if (s.stage.value === 'forest') s.input[e.code === 'KeyQ' ? 'rotL' : 'rotR'] = down
+      return
+    }
+    if (s.ui.birdseye && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+      e.preventDefault()
+      s.input.rotL = s.input.rotR = false
+      const side = e.code === 'ArrowLeft' ? 'left' : 'right'
+      if (down && !canMove()) return
+      s.input[side] = down
       return
     }
     const ck = camKeys[e.code]

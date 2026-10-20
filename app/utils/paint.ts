@@ -8,9 +8,11 @@ import { CODES, LIFECYCLE, STRATA, type FitLevel } from './library'
 
 export interface PaintState {
   plot: PlotData
+  others: { name: string; data: PlotData }[] // the other visible plots: drawn faded, behind, tap one to edit it
   lib: Map<string, LibSpecies>
   fits: Map<string, { level: FitLevel }>
   labels: boolean
+  showSupport: boolean
   tool: string
   step: string
   drawPts: LL[]
@@ -40,6 +42,58 @@ export function paint(ctx: CanvasRenderingContext2D, W: number, H: number, P: (l
       else ctx.moveTo(q.x, q.y)
     })
     if (close) ctx.closePath()
+  }
+
+  // ── the other plots: a faded sketch of each, with its name ──
+  for (const o of st.others) {
+    const od = o.data
+    ctx.globalAlpha = 0.55
+    for (const r of od.rows) {
+      line(rowPath(r))
+      ctx.strokeStyle = 'rgba(255, 248, 232, 0.5)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 5])
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+    for (const p of od.plants) {
+      const sp = st.lib.get(p.speciesId)
+      if (!sp || (p.role === 'support' && !st.showSupport)) continue
+      const q = P(p)
+      if (q.x < -60 || q.x > W + 60 || q.y < -60 || q.y > H + 60) continue
+      const r = Math.max(1.5, ((p.role === 'support' ? 0.35 : 0.5) * sp.widthM) / mpp)
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, r, 0, 7)
+      ctx.fillStyle = hexA(STRATA[sp.code].wash, 0.35)
+      ctx.fill()
+      ctx.lineWidth = 1
+      ctx.strokeStyle = hexA(STRATA[sp.code].color, 0.6)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+    if (od.boundary.length >= 3) {
+      line(od.boundary, true)
+      ctx.fillStyle = 'rgba(255, 248, 232, 0.06)'
+      ctx.fill()
+      ctx.strokeStyle = hexA(INK, 0.5)
+      ctx.lineWidth = 3.5
+      ctx.stroke()
+      ctx.strokeStyle = 'rgba(242, 230, 200, 0.75)'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([6, 6])
+      ctx.stroke()
+      ctx.setLineDash([])
+      const c = P(llCentroid(od.boundary))
+      ctx.font = '700 13px Alegreya, Georgia, serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.lineWidth = 3.5
+      ctx.strokeStyle = hexA(INK, 0.85)
+      ctx.lineJoin = 'round'
+      ctx.strokeText(o.name, c.x, c.y)
+      ctx.fillStyle = CREAM
+      ctx.fillText(o.name, c.x, c.y)
+    }
   }
 
   // ── land: a warm glaze inside, a rope on stakes around it ──
@@ -118,13 +172,38 @@ export function paint(ctx: CanvasRenderingContext2D, W: number, H: number, P: (l
   const emojis: { x: number; y: number; e: string; size: number }[] = []
   const pad = 80
   const showEmoji = (r: number) => r > 9
-  for (const code of [...CODES].reverse()) {
+  // the support layer first (it sits under everything), then the crops, low strata first
+  for (const [supPass, code] of [true, false].flatMap((x) => [...CODES].reverse().map((c) => [x, c] as const))) {
     const S = STRATA[code]
     for (const p of plot.plants) {
       const sp = st.lib.get(p.speciesId)
       if (!sp || sp.code !== code) continue
+      const sup = p.role === 'support'
+      if (sup !== supPass || (sup && !st.showSupport)) continue
       const q = P(p)
       if (q.x < -pad || q.x > W + pad || q.y < -pad || q.y > H + pad) continue
+      // the support layer is pruned hard: drawn smaller, in a pale sage wash with a dotted edge, under the crops
+      if (sup) {
+        const rs = Math.max(2, (sp.widthM * 0.35) / mpp)
+        ctx.beginPath()
+        ctx.arc(q.x, q.y, rs, 0, 7)
+        ctx.fillStyle = 'rgba(178, 214, 150, 0.42)'
+        ctx.fill()
+        ctx.setLineDash([2, 2])
+        ctx.lineWidth = 1.2
+        ctx.strokeStyle = S.color
+        ctx.stroke()
+        ctx.setLineDash([])
+        if (st.inspect === p.id) {
+          ctx.beginPath()
+          ctx.arc(q.x, q.y, rs + 4, 0, 7)
+          ctx.strokeStyle = '#ffcf4a'
+          ctx.lineWidth = 3
+          ctx.stroke()
+        }
+        if (rs > 7) emojis.push({ x: q.x, y: q.y, e: '🌿', size: Math.min(18, Math.max(9, rs * 0.7)) })
+        continue
+      }
       const r = Math.max(2.5, sp.widthM / 2 / mpp)
       // the canopy: a wash that's deeper at the centre, like watercolour pooling
       if (r > 6) {

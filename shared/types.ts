@@ -39,6 +39,8 @@ export interface Weather {
 }
 
 // GET /api/geocode: where the address is (fast), so the map can fly there before the climate is read
+// precision: how close the match is: the house itself, a named place, the street, the town, or only the region
+export type Precision = 'house' | 'street' | 'place' | 'town' | 'region'
 export interface GeoResult {
   label: string // short, e.g. "Eden Canyon Rd, Castro Valley"
   full: string // the geocoder's full display name
@@ -46,7 +48,14 @@ export interface GeoResult {
   lon: number
   country: string
   bbox?: [number, number, number, number] // south, north, west, east
+  precision?: Precision
 }
+// the best match, plus other places the same words could mean
+export interface GeoAnswer extends GeoResult {
+  alternatives?: GeoResult[]
+}
+// GET /api/geocode/suggest: type-ahead; pick one and pass its key back to /api/geocode
+export interface GeoSuggestion { text: string; key: string }
 
 // GET /api/climate: ten years of sky at a point, plus right now
 export interface ClimateResult {
@@ -125,7 +134,8 @@ export interface LibSpecies {
 // ── the design (Byron's v13 data model, kept compatible with his JSON) ──────
 export interface LL { lat: number; lng: number }
 export interface Row { idx: number; a: LL; b: LL; path?: LL[]; lvl?: number }
-export interface Plant { id: string; speciesId: string; lat: number; lng: number; rowIdx: number }
+// role 'support': planted as part of the support layer (nitrogen, biomass, pioneers), pruned hard, not a target crop
+export interface Plant { id: string; speciesId: string; lat: number; lng: number; rowIdx: number; role?: 'support' }
 export interface Keyline { id: string; points: LL[]; isContour: boolean; isOffset: boolean }
 
 export interface PlotData {

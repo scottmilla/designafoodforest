@@ -1,5 +1,6 @@
 import type { Code, LibSpecies, Site } from '#shared/types'
 import { bestCards, fitFor, yieldDefaults } from './library'
+import { fmtDist } from './fmt'
 
 // "Suggest a design": the goal-scoring design engine from plantafoodforest (server/model/engine.ts, "Syntropic
 // Sage"), ported to run in the browser over the Codex library, and aimed at the land the person drew instead of an
@@ -169,7 +170,7 @@ function pickHerbs(cands: Cand[], k: number, w: Weights) {
   return out
 }
 
-export function suggestDesign(site: Site, goals: Goal[], areaM2: number): Suggestion | null {
+export function suggestDesign(site: Site, goals: Goal[], areaM2: number, imperial = false): Suggestion | null {
   if (!goals.length) return null
   const [g1, g2] = goals as [Goal, Goal | undefined]
   const w: Weights = { [g1]: 1, ...(g2 ? { [g2]: 0.5 } : {}) }
@@ -207,7 +208,7 @@ export function suggestDesign(site: Site, goals: Goal[], areaM2: number): Sugges
     add(support, 'S', 'all', () => 'pollarded between the crop trees: nitrogen and mulch without shading the money')
     if (tree[0]) rowSpacing = Math.min(12, Math.max(8, tree[0].sp.widthM + 4.5))
     notes.push(`${tree[0]?.sp.name ?? 'A tree crop'} is the target crop${berry[0] ? `, carried by ${berry[0].sp.name} from year ${berry[0].ytf}` : ''}.`)
-    notes.push(`Rows ${Math.round(rowSpacing)} m apart so a compact tractor and mower fit down every alley.`)
+    notes.push(`Rows ${fmtDist(Math.round(rowSpacing), imperial)} apart so a compact tractor and mower fit down every alley.`)
   } else {
     const base = g1 === 'yearRound' || g1 === 'rare' ? { E: 2, H: 4, M: 6, L: 5 } : g1 === 'natives' ? { E: 3, H: 3, M: 4, L: 4 } : g1 === 'timber' ? { E: 3, H: 2, M: 2, L: 2 } : { E: 2, H: 3, M: 4, L: 4 }
     // a small plot can't carry as many species as a farm: fewer per layer, never fewer than one or two

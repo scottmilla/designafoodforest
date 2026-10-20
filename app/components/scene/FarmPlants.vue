@@ -61,6 +61,7 @@ function computeRoom(d: Scene, year: number) {
             const pj = d.plants[j]!
             if (d.species[pj.s]!.layer !== st) continue
             const dist = Math.hypot(pi.x - pj.x, pi.z - pj.z)
+            if (dist < 0.05) continue // the same spot twice (overlapping plots): not a neighbour to make room for
             if (dist < room[i]!) room[i] = dist
             if (dist < room[j]!) room[j] = dist
           }
@@ -146,7 +147,8 @@ function update(anim: number) {
     const g = g0 * a
     const f = sp.form
     // pollarded support trees are cut back every year or two: show them as pruned crowns
-    const cut = sp.pollard && sp.form !== 'pollard' ? 0.55 : 1
+    // and so is the support layer, chopped and dropped to feed the crops
+    const cut = sp.pollard && sp.form !== 'pollard' ? 0.55 : p.sup ? 0.65 : 1
     const h = Math.max(0.05, sp.heightM * g * (cut < 1 ? 0.75 : 1))
     const cs = canopyScaleFor(sp.deciduous, env.season, env.lush)
     // syntropic systems keep big canopies pruned; drawing them at full wild spread would hide everything below

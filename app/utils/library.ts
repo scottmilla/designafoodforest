@@ -1,15 +1,22 @@
+import { reactive, ref } from 'vue'
 import type { ClimateClass, Code, CodexClimate, LibSpecies, Lifecycle, Site } from '#shared/types'
 import raw from '#shared/library.json'
 
 // The species library: Byron Austin's Codex data cards joined with our species model (see scripts/build-library.ts).
-export const LIBRARY = raw as unknown as LibSpecies[]
+// The app starts with this bundled copy; if a species database is connected (edited in /admin), its library is
+// swapped in by setLibrary as soon as /api/species answers (plugins/library.client.ts).
+export const LIBRARY = (raw as unknown as LibSpecies[]).slice()
 export const libById = new Map(LIBRARY.map((s) => [s.id, s]))
+export const libVersion = ref(0) // bumps when the library is swapped, so computed lists refresh
+export const libSource = ref<'bundled' | 'db'>('bundled')
 
 // Byron's designer ids its species sp_<name>_<strata>(_n) as it parses the same Codex file. Rebuilding his
 // ids the same way lets design files move between his v13 designer and this one in both directions.
 export const toByron = new Map<string, string>()
 export const fromByron = new Map<string, string>()
-{
+function byronIds() {
+  toByron.clear()
+  fromByron.clear()
   const san = (x: string) => String(x).trim().replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '') || 'syntropic-design'
   const seen = new Set<string>()
   for (const sp of LIBRARY) {
@@ -21,6 +28,48 @@ export const fromByron = new Map<string, string>()
     fromByron.set(id, sp.id)
   }
 }
+byronIds()
+
+export function setLibrary(list: LibSpecies[], source: 'bundled' | 'db') {
+  if (!list.length) return
+  const keep = { ...canopy }
+  LIBRARY.splice(0, LIBRARY.length, ...list)
+  libById.clear()
+  for (const s of LIBRARY) libById.set(s.id, s)
+  byronIds()
+  libSource.value = source
+  codexWidth.clear() // fresh objects: nothing to restore, just re-apply the design's overrides
+  setCanopyOverrides(keep)
+}
+
+// Per-design canopy overrides, as in Byron's designer (his `canopyOverrides`): "in this design, my plums are
+// managed to 4 m". Like his, they set the species' canopy width while the design is open; the Codex width is
+// kept to restore. Every drawing, spacing and canopy rule reads widthM, so they all follow.
+const codexWidth = new Map<string, number>()
+export const canopy = reactive<Record<string, number>>({})
+export function setCanopyOverrides(map: Record<string, number>) {
+  for (const [id, w] of codexWidth) {
+    const sp = libById.get(id)
+    if (sp) sp.widthM = w
+  }
+  codexWidth.clear()
+  for (const k of Object.keys(canopy)) delete canopy[k]
+  for (const [id, v] of Object.entries(map)) {
+    const sp = libById.get(id)
+    if (!sp || !(Number(v) > 0)) continue
+    codexWidth.set(id, sp.widthM)
+    sp.widthM = Number(v)
+    canopy[id] = Number(v)
+  }
+  libVersion.value++
+}
+export function setCanopy(id: string, v: number | null) {
+  const next: Record<string, number> = { ...canopy }
+  if (v === null || !(v > 0)) delete next[id]
+  else next[id] = Math.round(v * 100) / 100
+  setCanopyOverrides(next)
+}
+export const codexWidthOf = (sp: LibSpecies) => codexWidth.get(sp.id) ?? sp.widthM
 
 export const STRATA: Record<Code, { name: string; color: string; wash: string; share: string }> = {
   E: { name: 'Emergent', color: '#8a6ad8', wash: '#d9ccf6', share: '~20% canopy' },

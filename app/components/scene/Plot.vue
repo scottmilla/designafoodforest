@@ -49,7 +49,19 @@ function add(geo: BufferGeometry, mat: Material, x = 0, y = 0, z = 0) {
 function build() {
   clear()
   const sc = s.scene.value
-  const poly = sc.poly
+  for (const poly of [sc.poly, ...sc.polys]) land(poly)
+  // mulched beds along the rows
+  const outer = glaze('#7a5232', 0.4)
+  const inner = glaze('#5e3c22', 0.45)
+  for (const r of sc.rows) {
+    if (r.length < 2) continue
+    add(ribbon(r, 1.8, 0.045), outer)
+    add(ribbon(r, 1.0, 0.05), inner)
+  }
+  for (const l of sc.lines) if (l.length >= 2) add(ribbon(l, 0.35, 0.06), glaze('#ffcf4a', 0.85))
+}
+// one piece of land: the glaze inside, stakes and rope around
+function land(poly: [number, number][]) {
   if (poly.length >= 3) {
     // the glaze: a shape in the x/-z plane, laid flat
     const shape = new Shape(poly.map(([x, z]) => ({ x, y: -z }) as any))
@@ -78,15 +90,6 @@ function build() {
       add(keep(new TubeGeometry(new CatmullRomCurve3(pts), n * 6, 0.025, 4)), ropeMat)
     }
   }
-  // mulched beds along the rows
-  const outer = glaze('#7a5232', 0.4)
-  const inner = glaze('#5e3c22', 0.45)
-  for (const r of sc.rows) {
-    if (r.length < 2) continue
-    add(ribbon(r, 1.8, 0.045), outer)
-    add(ribbon(r, 1.0, 0.05), inner)
-  }
-  for (const l of sc.lines) if (l.length >= 2) add(ribbon(l, 0.35, 0.06), glaze('#ffcf4a', 0.85))
 }
 
 watch([() => s.scene.value, () => s.ui.satGround], build, { immediate: true })

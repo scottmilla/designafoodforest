@@ -2,9 +2,10 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { Code, LibSpecies } from '#shared/types'
 import type { RecipeStep, Scope } from '~/composables/useDesign'
-import { CODES, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
-import { fmtRange } from '~/utils/fmt'
+import { CODES, codexWidthOf, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
+import { fmtDist, fmtLen, fmtRange, fmtSpan, fromUnit, lenUnit, toUnit } from '~/utils/fmt'
 import { GOALS, GROUP_NAME, suggestDesign, type Goal, type Suggestion } from '~/utils/suggest'
+import { DENSITY, supportCandidates, type Density } from '~/utils/support'
 
 // Step 3: choose from the Codex library (already filtered to what grows at this address), then place
 // one at a time, fill whole rows at the Codex spacing, or plant a layered consortium in one go.
@@ -70,7 +71,7 @@ function toggleGoal(g: Goal) {
 // "Suggest a design": the engine's goal scoring over the species that fit this address, as an editable recipe
 function suggest() {
   if (!d.site.value) return d.say('Still reading the climate here. Try again in a moment.')
-  const sg = suggestDesign(d.site.value, goals.value, d.areaM2.value)
+  const sg = suggestDesign(d.site.value, goals.value, d.areaM2.value, d.imperial.value)
   if (!sg || !sg.plants.length) return d.say('Nothing in the library fits this climate and those goals well enough to suggest.')
   suggestion.value = sg
   steps.value = sg.plants.map((p) => ({ speciesId: p.sp.id, spacing: p.spacing, rows: p.rows, group: p.group }))
@@ -81,7 +82,7 @@ const spacingDiffers = computed(() => !!suggestion.value && Math.abs(suggestion.
 function useSuggestedSpacing() {
   if (!suggestion.value) return
   d.setRowSpacing(suggestion.value.rowSpacing)
-  d.say(`Rows set to ${suggestion.value.rowSpacing} m for this design.`)
+  d.say(`Rows set to ${fmtDist(suggestion.value.rowSpacing, d.imperial.value)} for this design.`)
 }
 function plantRecipe() {
   d.applyRecipe(steps.value, scope.value, recipeMode.value)
@@ -89,6 +90,19 @@ function plantRecipe() {
 // keep spacings in step with Target / Design RS
 watch(d.fillMode, () => (steps.value = steps.value.map((s) => ({ ...s, spacing: d.spacingOf(libById.get(s.speciesId)!) }))))
 const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.indexOf(a.code) - CODES.indexOf(b.code)))
+
+// ── the support layer ──
+const supCands = computed(() => supportCandidates(d.site.value))
+const supRatio = computed(() => {
+  const crops = d.plot.plants.length - d.supportCount.value
+  return crops ? d.supportCount.value / crops : 0
+})
+function openSupport() {
+  d.ensureSupportPicks()
+  d.ui.support = !d.ui.support
+}
+watch(d.site, () => d.ensureSupportPicks())
+const DENSITIES = Object.keys(DENSITY) as Density[]
 </script>
 
 <template>
@@ -120,6 +134,12 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
           <button :class="{ on: d.fillMode.value === 'target' }" @click="d.fillMode.value = 'target'"><small>Target RS</small><b>{{ fmtRange(sel.targetRS, d.imperial.value) }}</b><em>as a crop</em></button>
           <button :class="{ on: d.fillMode.value === 'design' }" @click="d.fillMode.value = 'design'"><small>Design RS</small><b>{{ fmtRange(sel.designRS, d.imperial.value) }}</b><em>overplant ×2</em></button>
         </div>
+        <label class="canopy-ed" :title="'How wide you manage this crown in this design. Saved with the design, and read from / written to Byron\'s files as canopyOverrides.'">
+          <span>Canopy Ø in this design</span>
+          <input :value="toUnit(sel.widthM, d.imperial.value)" class="field num" type="number" min="0.1" :step="d.imperial.value ? 1 : 0.5" @change="d.setSpeciesCanopy(sel.id, fromUnit(+($event.target as HTMLInputElement).value, d.imperial.value))">
+          <span class="unit">{{ lenUnit(d.imperial.value) }}</span>
+          <button v-if="d.canopy[sel.id] !== undefined" class="chip tiny" :title="`Back to the Codex width (${fmtLen(codexWidthOf(sel), d.imperial.value)})`" @click="d.setSpeciesCanopy(sel.id, null)">↺ Codex {{ fmtLen(codexWidthOf(sel), d.imperial.value) }}</button>
+        </label>
         <div class="presets">
           <button class="chip tiny" @click="fill('all')">⫶ Fill every row</button>
           <button class="chip tiny" @click="fill('A')">A rows</button>
@@ -153,7 +173,7 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
               <ul><li v-for="(n, i) in suggestion.notes" :key="i">{{ n }}</li></ul>
             </details>
             <div class="presets">
-              <button v-if="spacingDiffers" class="chip tiny" @click="useSuggestedSpacing">↔ Set rows to {{ suggestion.rowSpacing }} m</button>
+              <button v-if="spacingDiffers" class="chip tiny" @click="useSuggestedSpacing">↔ Set rows to {{ fmtDist(suggestion.rowSpacing, d.imperial.value) }}</button>
               <button v-if="suggestion.contour && d.rowMode.value === 'straight'" class="chip tiny" @click="d.setRowMode('keyline')">〰 Follow the slope</button>
             </div>
           </div>
@@ -167,8 +187,8 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
               <option value="A">A rows</option>
               <option value="B">B rows</option>
             </select>
-            <input v-model.number="st.spacing" class="field num" type="number" min="0.1" step="0.1" :aria-label="`Spacing for ${libById.get(st.speciesId)!.name}`" :title="'Metres between plants'">
-            <span class="unit">m</span>
+            <input :value="toUnit(st.spacing, d.imperial.value)" class="field num" type="number" min="0.1" :step="d.imperial.value ? 0.5 : 0.1" :aria-label="`Spacing for ${libById.get(st.speciesId)!.name}`" :title="d.imperial.value ? 'Feet between plants' : 'Metres between plants'" @change="st.spacing = Math.max(0.1, fromUnit(+($event.target as HTMLInputElement).value, d.imperial.value))">
+            <span class="unit">{{ lenUnit(d.imperial.value) }}</span>
             <button class="rb minus" :aria-label="`Remove ${libById.get(st.speciesId)!.name}`" @click="steps.splice(i, 1)">−</button>
           </li>
           <li v-if="!steps.length" class="empty">Choose goals above for a suggested design, or pick plants below and tap ＋ Recipe.</li>
@@ -190,6 +210,40 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
       </div>
     </div>
 
+    <!-- the support layer: nitrogen, biomass and pioneer species between and beside the crops -->
+    <div class="recipe support" :class="{ open: d.ui.support }">
+      <button class="recipe-head" @click="openSupport">
+        <span>🌿 Support layer <small v-if="d.supportCount.value">· {{ d.supportCount.value.toLocaleString() }} plants</small></span>
+        <span>{{ d.ui.support ? '▾' : '▸' }}</span>
+      </button>
+      <div v-if="d.ui.support" class="recipe-body">
+        <p class="fine tight">In a syntropic system the crops are carried by support plants at every stratum: nitrogen fixers, biomass and pioneers, planted densely between the crops and pruned hard to feed them. Picked here for {{ d.site.value ? `zone ${d.site.value.zoneLabel}` : 'your site' }}.</p>
+        <ul class="frows sup-picks">
+          <li v-for="c in CODES" :key="c" :style="{ '--accent': STRATA[c].wash }">
+            <span class="fe">{{ d.supportCfg.picks[c] ? libById.get(d.supportCfg.picks[c]!)?.emoji : '·' }}</span>
+            <span class="fi"><b>{{ STRATA[c].name }}</b><small>{{ supCands[c].length ? `${supCands[c].length} option${supCands[c].length > 1 ? 's' : ''}` : 'none suit here' }}</small></span>
+            <select v-model="d.supportCfg.picks[c]" class="field mini" :aria-label="`${STRATA[c].name} support species`" :disabled="!supCands[c].length">
+              <option :value="null">— none —</option>
+              <option v-for="sp in supCands[c]" :key="sp.id" :value="sp.id">{{ sp.name }}{{ sp.roles.includes('nfix') ? ' · N' : '' }}{{ sp.invasive ? ' ⚠' : '' }}{{ d.fits.value.get(sp.id)?.level === 'edge' ? ' 🟡' : '' }}</option>
+            </select>
+          </li>
+        </ul>
+        <div class="seg">
+          <button v-for="k in DENSITIES" :key="k" class="chip tiny" :class="{ on: d.supportCfg.density === k }" :title="DENSITY[k].sub" @click="d.supportCfg.density = k">{{ DENSITY[k].label }}</button>
+        </div>
+        <label class="optin"><input v-model="d.supportCfg.between" type="checkbox"> Also plant support hedgerows down the middle of each alley</label>
+        <button class="btn btn-primary wide gap-top" :disabled="!d.plot.rows.length" @click="d.plantSupport()">🌿 {{ d.supportCount.value ? 'Replant' : 'Plant' }} the support layer</button>
+        <div v-if="d.supportCount.value" class="presets">
+          <button class="chip tiny" :class="{ on: !d.ui.showSupport }" @click="d.ui.showSupport = !d.ui.showSupport">{{ d.ui.showSupport ? '🙈 Hide support' : '👁 Show support' }}</button>
+          <button class="chip tiny" @click="d.clearSupport()">✕ Clear support</button>
+        </div>
+        <p class="fine tight">
+          <template v-if="d.supportCount.value">{{ d.supportCount.value.toLocaleString() }} support plants<template v-if="supRatio"> · {{ supRatio.toFixed(1) }} per crop plant</template>. </template>
+          Plant your crops first: support fills the gaps around them, standing closer than crops would (it's kept pruned), and is thinned out as the canopy closes. N = fixes nitrogen · ⚠ = can be invasive.
+        </p>
+      </div>
+    </div>
+
     <!-- the library -->
     <input v-model="q" class="field search" type="search" placeholder="Search 160 Codex species…" aria-label="Search species">
     <div class="filters">
@@ -203,8 +257,8 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
         <button v-for="sp in g.items" :key="sp.id" class="spi" :class="{ sel: d.selSpId.value === sp.id }" :style="{ '--accent': STRATA[sp.code].wash }" @click="pick(sp)">
           <span class="fe">{{ sp.emoji }}</span>
           <span class="fi">
-            <b>{{ sp.name }}<small v-if="d.counts.value.get(sp.id)" class="count"> ×{{ d.counts.value.get(sp.id) }}</small></b>
-            <small>{{ sp.heightM }}×{{ sp.widthM }} m · every {{ sp.targetRS[0] }}–{{ sp.targetRS[1] }} m · {{ LIFECYCLE[sp.lifecycle].label.split(' · ')[0] }}</small>
+            <b>{{ sp.name }}<small v-if="d.counts.value.get(sp.id)" class="count"> ×{{ d.counts.value.get(sp.id) }}</small><small v-if="d.canopy[sp.id] !== undefined" class="count" title="Canopy width edited for this design"> ●</small></b>
+            <small>{{ fmtLen(sp.heightM, d.imperial.value) }} × {{ fmtLen(sp.widthM, d.imperial.value) }} · every {{ fmtSpan(sp.targetRS[0], sp.targetRS[1], d.imperial.value) }} · {{ LIFECYCLE[sp.lifecycle].label.split(' · ')[0] }}</small>
           </span>
           <span class="fitdot" :title="d.fits.value.get(sp.id)?.why">{{ dot(sp) }}</span>
         </button>
@@ -222,7 +276,7 @@ const inDesign = computed(() => d.inUse.value.slice().sort((a, b) => CODES.index
           <span class="cc-v">{{ Math.round(d.canopyShare.value[c] * 100) }}%</span>
         </div>
       </div>
-      <p class="fine tight">Bar = how much of your land each layer's mature crowns cover. Tick = the Codex target (20 / 40 / 60 / 80%). Over it, layers shade each other: prune harder, widen spacing, or use fewer rows.</p>
+      <p class="fine tight">Bar = how much of your land each layer's mature crop crowns cover (the pruned support layer isn't counted). Tick = the Codex target (20 / 40 / 60 / 80%). Over it, layers shade each other: prune harder, widen spacing, or use fewer rows.</p>
       <h3>In your design</h3>
       <ul class="frows">
         <li v-for="sp in inDesign" :key="sp.id" :style="{ '--accent': STRATA[sp.code].wash }">

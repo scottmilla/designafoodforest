@@ -15,17 +15,21 @@ npm run library   # rebuild shared/library.json after editing either species sou
 npm run typecheck # TypeScript across app and server
 ```
 
+Species admin: `/admin` (needs `NUXT_ADMIN_PASSWORD` and, to edit, `NUXT_MONGODB_URI`; see `.env.example` and MAINTENANCE.md).
+
 **Maintaining or deploying it? Read [MAINTENANCE.md](MAINTENANCE.md):** how the code fits together, where the "AI" is (there is none; it is all readable rules), what will and won't scale, the Vercel steps, and the licensing checks to make before going public.
 
 ## How it flows
 
-1. **Where is your land?** Any address, place or `lat, lng` → `/api/geocode` (OpenStreetMap Nominatim). The map flies there immediately while `/api/climate` reads ten years of Open-Meteo history for the hardiness zone, chill hours, frost-free days and climate class.
+1. **Where is your land?** Any address, place or `lat, lng`, with suggestions as you type → `/api/geocode` (Esri's World Geocoder, which has real rural address points for the US and New Zealand, with OpenStreetMap as a fallback). If only the street or town matched, it says so, and other matches are offered. The map flies there immediately while `/api/climate` reads ten years of Open-Meteo history for the hardiness zone, chill hours, frost-free days and climate class.
 2. **Land.** Tap the corners (tap the first corner again, or ✓, to close; no double-click needed), or import a KML polygon. A KML with several polygons asks which one.
 3. **Rows.** Straight rows redraw live as you drag spacing and direction (presets for market garden / food forest / orchard / tractor alleys, one-tap north–south, align to the longest edge, or tap two points). Or *Follow the slope*: trace a keyline and fill the land with offset rows, optionally inside a drawn zone and appended to existing rows.
 4. **Plant.** The Codex library, pre-filtered to what grows at this address (🟢 good, 🟡 edge, 🔴 hidden unless you ask). Pick a plant to see its Target RS / Design RS, hard bans and fit, then place one (snaps to rows), tap a row to fill it, or fill every / A / B row. The **row recipe** is Byron's pattern tool in two modes: *Layered* (each plant fills its rows at its own spacing, the syntropic consortium) and *In sequence* (his original plant-gap-plant pattern). ✨ **Suggest a design** takes one or two ranked goals and fills the recipe from the species that fit the address (plantafoodforest's goal-scoring engine, ported), with a "why this design" list; "Mixed layers" then lets each layer's species take turns along your rows. The **canopy check** shows how much of the land each stratum's mature crowns cover against the Codex targets (E 20%, H 40%, M 60%, L 80%).
 5. **Step inside.** The button, or simply zoom in past the satellite's resolution. The camera starts straight down where the map was and tilts into the forest, standing on the real satellite photo (toggle to a painted ground). Walk with WASD or taps, spin with Q/E, scrub the years, bird's-eye. 🛰 Back to the map returns you to where you're standing.
 
 📊 Harvest projects yield or value by year and stratum with Byron's ramp → plateau → decline model, seeded from real per-plant yields where we have them, scaled down when a stratum is planted past its canopy share. Every number is editable.
+
+**Plots.** A design can hold several plots (the 📐 bar on the card): each has its own land, rows and plants; the others show faded on the map (tap one to edit it) and stand alongside in the forest. **Support layer.** In the Plant step, 🌿 picks nitrogen, biomass and pioneer species for each stratum and plants them in the gaps between the crops (and optionally as hedgerows down each alley), the way a syntropic system is actually carried. **In the forest**, the month slider (each month with its zodiac sign, ▶ to play the year) shows the seasons; in bird's-eye, 🎯 Lock on keeps the camera on the gardener so all four arrow keys walk. **m / ft** switches units everywhere.
 
 Designs auto-save on the device. ☰ exports KML (Google Earth) and a design JSON in Byron's v3 project format; his project and plot files open here too, with his species ids mapped exactly.
 

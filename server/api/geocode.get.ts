@@ -1,70 +1,29 @@
-import type { GeoResult } from '../../shared/types'
+import type { GeoAnswer } from '../../shared/types'
+import { parseCoords } from '../utils/addressText'
+import { geocode, reverse } from '../utils/geocoders'
 
-// GET /api/geocode?q=1 Eden Canyon Rd, Castro Valley  (or "37.694, -122.073")
-// Any address, place or coordinates → a point to fly the map to. Fast on purpose: the climate is read separately.
-//
-// Geocoder: OpenStreetMap's public Nominatim. Its usage policy asks for an identifying User-Agent, at most 1
-// request per second, and no heavy commercial use (https://operations.osmfoundation.org/policies/nominatim/).
-// We send the NUXT_CONTACT_EMAIL as identification, cache answers, and space requests out. If you outgrow it, swap
-// `search()` for Mapbox, Google, Geoapify or a self-hosted Nominatim; nothing else in the app needs to change.
-const ua = () => {
-  const email = useRuntimeConfig().contactEmail
-  return { 'User-Agent': `designafoodforest/0.1 (food forest designer${email ? '; ' + email : ''})` }
-}
-// one Nominatim request per second, per function instance
-let last = 0
-async function throttle() {
-  const wait = last + 1000 - Date.now()
-  last = Math.max(Date.now(), last + 1000) // reserve the next slot before waiting, so concurrent calls queue up
-  if (wait > 0) await new Promise<void>((r) => setTimeout(r, wait))
-}
-
-export default defineEventHandler(async (event): Promise<GeoResult> => {
-  rateLimit(event, 'geocode', 20)
-  const q = String(getQuery(event).q ?? '').trim().slice(0, 200)
+// GET /api/geocode?q=45 Kahikatea Flat Road, Dairy Flat   (or "37.694, -122.073")
+// GET /api/geocode?q=<suggestion text>&key=<suggestion key>   (a pick from /api/geocode/suggest: exact, one lookup)
+// Any address, place or coordinates → the best point to fly the map to, plus other places it could mean.
+// Fast on purpose: the climate is read separately. How the services are combined: server/utils/geocoders.ts.
+export default defineEventHandler(async (event): Promise<GeoAnswer> => {
+  rateLimit(event, 'geocode', 30)
+  const query = getQuery(event)
+  const q = String(query.q ?? '').trim().slice(0, 200)
+  const key = String(query.key ?? '').slice(0, 400) || undefined
+  const country = /^[A-Z]{2}$/i.test(String(query.cc ?? '')) ? String(query.cc).toUpperCase() : undefined
   if (!q) throw createError({ statusCode: 400, statusMessage: 'Type an address or place' })
 
-  const coords = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/)
+  const coords = parseCoords(q)
   if (coords) {
-    const lat = +coords[1]!
-    const lon = +coords[2]!
+    const { lat, lon } = coords
     if (Math.abs(lat) > 90 || Math.abs(lon) > 180) throw createError({ statusCode: 400, statusMessage: 'Those coordinates are off the map' })
-    const near = await reverse(lat, lon)
-    return { label: near?.label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`, full: near?.full ?? q, lat, lon, country: near?.country ?? '' }
+    const at = await reverse(lat, lon)
+    return { label: at?.label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`, full: at?.full ?? q, lat, lon, country: at?.country ?? '', precision: 'house' }
   }
 
-  const params = new URLSearchParams({ format: 'jsonv2', limit: '1', addressdetails: '1', q })
-  await throttle()
-  const [hit] = await $fetch<any[]>(`https://nominatim.openstreetmap.org/search?${params}`, { headers: ua(), timeout: 9000 }).catch(() => {
-    throw createError({ statusCode: 502, statusMessage: 'The address service is not answering. Try again, or paste coordinates.' })
-  })
-  if (!hit) throw createError({ statusCode: 404, statusMessage: `We couldn't find "${q}". Try adding the town, or paste lat, lng.` })
-  const bb = (hit.boundingbox ?? []).map(Number)
-  return {
-    label: shortLabel(hit.address ?? {}, hit.name || hit.display_name),
-    full: hit.display_name,
-    lat: +hit.lat,
-    lon: +hit.lon,
-    country: String(hit.address?.country_code ?? '').toUpperCase(),
-    ...(bb.length === 4 ? { bbox: bb as [number, number, number, number] } : {}),
-  }
+  const found = await geocode(q, { key, country })
+  if (!found.length) throw createError({ statusCode: 404, statusMessage: `We couldn't find "${q}". Pick one of the suggestions as you type, add the town, or paste lat, lng.` })
+  const [best, ...rest] = found
+  return { ...best!, alternatives: rest.slice(0, 4) }
 })
-
-function shortLabel(a: Record<string, string>, fallback: string) {
-  const street = a.road ? `${a.house_number ? a.house_number + ' ' : ''}${a.road}` : ''
-  const town = a.city || a.town || a.village || a.hamlet || a.municipality || a.county || ''
-  const region = a.state || a.region || ''
-  return [...new Set([street || fallback, town, street ? '' : region].filter(Boolean))].slice(0, 2).join(', ') || fallback
-}
-
-async function reverse(lat: number, lon: number) {
-  try {
-    const p = new URLSearchParams({ format: 'jsonv2', lat: String(lat), lon: String(lon), zoom: '14', addressdetails: '1' })
-    await throttle()
-    const r = await $fetch<any>(`https://nominatim.openstreetmap.org/reverse?${p}`, { headers: ua(), timeout: 6000 })
-    if (!r?.address) return null
-    return { label: shortLabel(r.address, r.display_name), full: r.display_name as string, country: String(r.address.country_code ?? '').toUpperCase() }
-  } catch {
-    return null
-  }
-}

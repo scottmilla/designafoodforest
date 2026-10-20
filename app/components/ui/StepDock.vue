@@ -24,6 +24,7 @@ function go(s: Step) {
     <div class="flip" :class="{ flipped: d.ui.harvest }">
       <div class="flip-inner">
         <div class="card survey-card face front" :inert="d.ui.harvest">
+          <PlotBar />
           <nav class="steptabs" aria-label="Design steps">
             <button v-for="(s, i) in STEPS" :key="s.id" :class="{ on: d.step.value === s.id, off: !can(s.id) }" @click="go(s.id)">
               <i>{{ i + 1 }}</i><span><b>{{ s.title }}</b><small>{{ s.sub() }}</small></span>

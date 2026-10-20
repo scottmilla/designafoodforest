@@ -40,6 +40,11 @@ onBeforeRender(({ delta }) => {
   if (!forest) {
     want.set(player.x + 1.4, 1.9, player.z + 5.6)
     look.set(player.x, 3.0, player.z - 2)
+  } else if (s.ui.birdseye && s.ui.lockOn) {
+    // locked on: high above the gardener, following as they walk, so the arrows move them, not the view
+    const h = Math.max(26, canopyTop.value * 2.2 + 14)
+    want.set(player.x, h, player.z + h * 0.55)
+    look.set(player.x, 0, player.z - 1)
   } else if (s.ui.birdseye) {
     // rise up so the whole design reads at once
     const span = Math.max(sc.width, sc.depth * 1.2)
@@ -76,8 +81,9 @@ onBeforeRender(({ delta }) => {
     if (player.yaw > Math.PI * 2) player.yaw -= Math.PI * 2
     else if (player.yaw < -Math.PI * 2) player.yaw += Math.PI * 2
     const f = s.selected.value !== null ? player.focus : null
-    const px = f ? f.x : s.ui.birdseye ? look.x : player.x
-    const pz = f ? f.z : s.ui.birdseye ? look.z : player.z
+    const free = s.ui.birdseye && !s.ui.lockOn
+    const px = f ? f.x : free ? look.x : player.x
+    const pz = f ? f.z : free ? look.z : player.z
     const cs = Math.cos(player.yaw)
     const sn = Math.sin(player.yaw)
     const turn = (v: Vector3) => {
@@ -87,7 +93,7 @@ onBeforeRender(({ delta }) => {
       v.z = pz - dx * sn + dz * cs
     }
     turn(want)
-    if (!s.ui.birdseye) turn(look)
+    if (!free) turn(look)
   }
   const cur = (c.userData.look ??= look.clone()) as Vector3
   if (!ready) {

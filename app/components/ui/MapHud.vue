@@ -33,6 +33,10 @@ function startOver() {
       <p class="place">📍 {{ d.geo.value?.label }}</p>
       <p v-if="d.site.value" class="zone"><b>Zone {{ d.site.value.zoneLabel }}</b> · {{ climateName }}<small v-if="d.site.value.estimated"> (est.)</small></p>
       <p v-else-if="d.climateLoading.value" class="meta busy">🌦 reading ten years of your sky…</p>
+      <details v-if="d.alternatives.value.length && !d.plot.boundary.length" class="alts">
+        <summary>Not your land? {{ d.alternatives.value.length }} other match{{ d.alternatives.value.length > 1 ? 'es' : '' }}</summary>
+        <button v-for="(a, i) in d.alternatives.value" :key="i" class="option" @click="d.relocate(a); d.alternatives.value = d.alternatives.value.filter((x) => x !== a)">📍 {{ a.full }}</button>
+      </details>
       <p v-if="d.site.value" class="meta hide-compact">{{ d.imperial.value ? Math.round(d.site.value.precipMm / 25.4) + ' in' : d.site.value.precipMm + ' mm' }} rain · {{ d.site.value.frostFreeDays }} frost-free days · {{ d.site.value.chillHours }} chill h</p>
     </section>
     </div>
@@ -43,6 +47,7 @@ function startOver() {
         <button class="chip" :disabled="!d.histState.canUndo" aria-label="Undo" title="Undo (⌘Z)" @click="d.undo()">↩</button>
         <button class="chip" :disabled="!d.histState.canRedo" aria-label="Redo" title="Redo (⇧⌘Z)" @click="d.redo()">↪</button>
         <button class="chip" :class="{ on: d.ui.harvest }" @click="d.ui.harvest = !d.ui.harvest">📊<span class="hide-compact"> Harvest</span></button>
+        <UnitsToggle />
         <button class="chip" :class="{ on: d.ui.menu }" aria-label="Menu" @click="d.ui.menu = !d.ui.menu">☰</button>
       </div>
       <Transition name="pop">
@@ -51,13 +56,18 @@ function startOver() {
             <small>Design name</small>
             <input v-model="d.name.value" class="field" @change="d.saveNow()">
           </label>
+          <div class="menu-name">
+            <small>Go to an address</small>
+            <AddressSearch placeholder="Another address, or lat, lng" button="Go" />
+          </div>
           <button class="option" @click="d.ui.labels = !d.ui.labels">🏷 {{ d.ui.labels ? 'Hide' : 'Show' }} plant names</button>
           <label class="option sat">🛰 Photo <input v-model.number="d.ui.sat" type="range" min="0.15" max="1" step="0.05" aria-label="Satellite photo strength"></label>
           <button v-if="d.plot.boundary.length >= 3" class="option" @click="emit('fit'); d.ui.menu = false">🔍 Fit my land on screen</button>
           <hr>
-          <button class="option" @click="d.exportKML(); d.ui.menu = false">⬇ Export KML <small>(Google Earth)</small></button>
-          <button class="option" @click="d.exportJSON(); d.ui.menu = false">⬇ Save design file <small>(JSON)</small></button>
-          <button class="option" @click="jsonIn?.click()">📂 Open a design file</button>
+          <button class="option" @click="d.exportKML(); d.ui.menu = false">⬇ Export KML <small>(Google Earth{{ d.plots.value.length > 1 ? ', this plot' : '' }})</small></button>
+          <button class="option" @click="d.exportJSON(); d.ui.menu = false">⬇ Save design file <small>(JSON{{ d.plots.value.length > 1 ? ', all plots' : '' }})</small></button>
+          <button class="option" @click="d.exportPlotJSON(); d.ui.menu = false">⬇ Save this plot only <small>(Plot JSON)</small></button>
+          <button class="option" @click="jsonIn?.click()">📂 Open a file <small>(a plot file is added as a plot)</small></button>
           <button class="option" @click="startOver">✦ New address / my designs</button>
           <input ref="jsonIn" type="file" accept=".json" hidden @change="openJSON">
           <p class="fine">Saved automatically on this device.</p>

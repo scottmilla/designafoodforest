@@ -12,9 +12,9 @@ const player = usePlayer()
 const plant = computed(() => {
   if (d.stage.value === 'forest' && d.selected.value !== null) {
     const p = d.scene.value.plants[d.selected.value]
-    return p ? d.plot.plants.find((x) => x.id === p.id) ?? null : null
+    return p ? d.findPlant(p.id) : null
   }
-  return d.inspect.value ? d.plot.plants.find((x) => x.id === d.inspect.value) ?? null : null
+  return d.inspect.value ? d.findPlant(d.inspect.value) : null
 })
 const sp = computed(() => (plant.value ? libById.get(plant.value.speciesId) : d.ui.card ? libById.get(d.ui.card) : null) ?? null)
 const fit = computed(() => (sp.value ? d.fits.value.get(sp.value.id) : null))
