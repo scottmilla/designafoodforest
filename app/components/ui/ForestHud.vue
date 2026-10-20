@@ -84,6 +84,15 @@ function live() {
   d.ui.month = null
 }
 onBeforeUnmount(stopPlay)
+// on narrow screens the cards sit under the season bar: keep them clear of its real height
+const seasonBar = ref<HTMLElement | null>(null)
+let seasonRO: ResizeObserver | undefined
+onMounted(() => {
+  if (!seasonBar.value) return
+  seasonRO = new ResizeObserver(([e]) => document.documentElement.style.setProperty('--season-h', `${Math.ceil((e!.target as HTMLElement).offsetHeight + 10)}px`))
+  seasonRO.observe(seasonBar.value)
+})
+onBeforeUnmount(() => seasonRO?.disconnect())
 </script>
 
 <template>
@@ -116,6 +125,20 @@ onBeforeUnmount(stopPlay)
       <HarvestPanel />
     </div>
 
+    <!-- the seasons: every month with its zodiac sign, across the top -->
+    <div ref="seasonBar" class="season-bar" role="group" aria-label="Season">
+      <span class="m-now">
+        <b>{{ MONTH_NAMES[month - 1] }}</b> <span class="glyph" aria-hidden="true">{{ sign.glyph }}</span> {{ sign.name }}
+      </span>
+      <button class="chip tiny" :class="{ on: playing }" :aria-label="playing ? 'Pause the seasons' : 'Play the year through'" @click="togglePlay">{{ playing ? '❚❚' : '▶' }}</button>
+      <button v-if="d.ui.month !== null" class="chip tiny" title="Back to this month's live sky" @click="live">● Live</button>
+      <input v-model.number="month" type="range" min="1" max="12" step="1" aria-label="Month of the year" @pointerdown="stopPlay">
+      <div class="zodiac" aria-hidden="true">
+        <button v-for="(z, i) in ZODIAC" :key="i" :class="{ on: month === i + 1, now: liveMonth === i + 1 }" :title="`${MONTH_NAMES[i]} · ${z.name}`" tabindex="-1" @click="stopPlay(); month = i + 1">
+          <i>{{ z.glyph }}</i><small>{{ MONTH_NAMES[i]![0] }}</small>
+        </button>
+      </div>
+    </div>
     <div class="tools">
       <button class="chip back" @click="back">🛰 Back to the map</button>
       <div class="row">
@@ -142,19 +165,6 @@ onBeforeUnmount(stopPlay)
           <i><b :style="{ width: crownPct + '%' }" /></i>
         </div>
         <small>{{ yearNote }}</small>
-        <div class="months">
-          <span class="m-now">
-            <b>{{ MONTH_NAMES[month - 1] }}</b> <span class="glyph" aria-hidden="true">{{ sign.glyph }}</span> {{ sign.name }}
-          </span>
-          <button class="chip tiny" :class="{ on: playing }" :aria-label="playing ? 'Pause the seasons' : 'Play the year through'" @click="togglePlay">{{ playing ? '❚❚' : '▶' }}</button>
-          <button v-if="d.ui.month !== null" class="chip tiny" title="Back to this month's live sky" @click="live">● Live</button>
-          <input v-model.number="month" type="range" min="1" max="12" step="1" aria-label="Month of the year" @pointerdown="stopPlay">
-          <div class="zodiac" aria-hidden="true">
-            <button v-for="(z, i) in ZODIAC" :key="i" :class="{ on: month === i + 1, now: liveMonth === i + 1 }" :title="`${MONTH_NAMES[i]} · ${z.name}`" tabindex="-1" @click="stopPlay(); month = i + 1">
-              <i>{{ z.glyph }}</i><small>{{ MONTH_NAMES[i]![0] }}</small>
-            </button>
-          </div>
-        </div>
         <small v-if="d.ui.tractor" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> throttle / reverse · <kbd>←</kbd><kbd>→</kbd> steer · <kbd>Q</kbd><kbd>E</kbd> turn the view · <kbd>space</kbd> hop off</small>
         <small v-else-if="d.ui.birdseye" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> walk{{ d.ui.lockOn ? ' (camera follows)' : '' }} · <kbd>Q</kbd><kbd>E</kbd> turn · scroll to zoom · click a plant</small>
         <small v-else class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> walk · <kbd>←</kbd><kbd>→</kbd> turn the camera · scroll to zoom · click a plant</small>

@@ -202,7 +202,7 @@ select.field { width: auto; }
 .plist li { display: flex; justify-content: space-between; padding: .2em 0; border-bottom: 1px dashed #3b2a1a33; }
 
 /* ── plant card / modal ── */
-.scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding: 0 5vw; background: #2b1b0f22; z-index: 10; }
+.scrim { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding: 0 5vw; background: #2b1b0f22; z-index: 900; } /* above every HUD layer (tools 700, dock 650) */
 .scrim.center { justify-content: center; background: #2b1b0f55; }
 .plant, .designer { width: min(430px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; }
 /* these cards scroll, which would clip a close button hanging off the corner, so tuck it inside */
@@ -484,7 +484,7 @@ select.field { width: auto; }
 /* forest */
 .stage-forest .tools .back { background: var(--sun); }
 .stage-forest .timeline small:first-of-type { opacity: .85; }
-.empty-forest { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); text-align: center; margin: 0; }
+.empty-forest { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); text-align: center; margin: 0; }
 
 /* phones */
 @media (max-width: 700px), (max-height: 480px) {
@@ -704,18 +704,28 @@ html, body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hid
 .alts summary { cursor: pointer; font-weight: 700; color: var(--violet); }
 .alts .option { width: 100%; text-align: left; font-size: .82rem; padding: .35em .55em; margin-top: .25rem; white-space: normal; }
 
-/* the season slider: month + zodiac sign, the twelve signs as stops under it */
-.timeline .months { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .15rem .4rem; margin-top: .35rem; padding-top: .4rem; border-top: 2px dashed #3b2a1a33; }
-.timeline .months .m-now { font-size: 1.05rem; }
-.timeline .months .glyph { color: var(--violet); }
-.timeline .months .chip.tiny { margin: 0; }
-.timeline .months input { grid-column: 1 / -1; }
-.timeline .zodiac { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, 1fr); margin-top: -.1rem; }
-.timeline .zodiac button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); display: grid; justify-items: center; line-height: 1; opacity: .55; }
-.timeline .zodiac button i { font-style: normal; font-size: .9rem; }
-.timeline .zodiac button small { grid-column: auto; font-size: .62rem; opacity: 1; display: block; }
-.timeline .zodiac button.now small { text-decoration: underline; }
-.timeline .zodiac button.on { opacity: 1; color: var(--violet); font-weight: 700; }
+/* the season slider: month + zodiac sign, its own bar across the top of the forest view */
+.season-bar {
+  position: absolute; top: var(--edge, 16px); left: 50%; transform: translateX(-50%); z-index: 650;
+  width: clamp(280px, 34vw, 460px); display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: .15rem .4rem;
+  padding: .45rem .9rem .4rem; background: #fff8e8ee; border: 3px solid var(--ink); border-radius: var(--r-soft); box-shadow: 0 4px 0 var(--ink);
+}
+.season-bar .m-now { font-family: var(--font-display); font-size: 1.1rem; white-space: nowrap; }
+.season-bar .glyph { color: var(--violet); }
+.season-bar .chip.tiny { margin: 0; }
+.season-bar input { grid-column: 1 / -1; accent-color: var(--violet); width: 100%; }
+.season-bar .zodiac { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(12, 1fr); margin-top: -.1rem; }
+.season-bar .zodiac button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: var(--ink); display: grid; justify-items: center; line-height: 1; opacity: .55; }
+.season-bar .zodiac button i { font-style: normal; font-size: .9rem; }
+.season-bar .zodiac button small { font-size: .62rem; display: block; }
+.season-bar .zodiac button.now small { text-decoration: underline; }
+.season-bar .zodiac button.on { opacity: 1; color: var(--violet); font-weight: 700; }
+/* narrower windows: no room beside the place card and tools, so the bar spans the top and they move down under it */
+@media (max-width: 1100px) {
+  .season-bar { left: var(--edge, 10px); right: var(--edge, 10px); transform: none; width: auto; padding: .3rem .7rem .3rem; }
+  .season-bar .m-now { font-size: 1rem; }
+  .stage-forest .climate, .stage-forest .tools, .stage-forest .system.harvest { top: calc(var(--edge, 10px) + var(--season-h, 96px)) !important; }
+}
 
 /* the support layer: one line per stratum, a species picker on each */
 .recipe.support { background: #f3f9ecaa; }
