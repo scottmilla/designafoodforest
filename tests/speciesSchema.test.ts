@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import raw from '../shared/library.json'
-import type { LibSpecies } from '../shared/types'
 import { blankSpecies, speciesId, validateSpecies } from '../shared/speciesSchema'
+import { hasLibrary, privateLibrary } from './privateLibrary'
 
-const LIB = raw as unknown as LibSpecies[]
+const LIB = privateLibrary ?? []
 
 describe('species records', () => {
-  it('accepts every species in the bundled Codex library unchanged', () => {
+  it.skipIf(!hasLibrary)('accepts every species in the Codex library unchanged', () => {
     for (const sp of LIB) {
       const r = validateSpecies(sp)
       if (!r.ok) throw new Error(`${sp.id}: ${r.errors.join('; ')}`)

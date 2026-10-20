@@ -6,7 +6,7 @@ import { GROUP_ORDER, type Group } from '~/utils/suggest'
 import {
   buildKML, download, fileSafe, frameAt, keylineRows, llCentroid, longestEdgeAngle, nearestRow, parseKMLPolys, pathSampler, pointInPoly, polyAreaM2, rowAB, rowPath, straightRows,
 } from '~/utils/geo'
-import { bestCards, canopy, clearance, fitFor, fromByron, libById, LIBRARY, libVersion, setCanopy, setCanopyOverrides, toByron, yieldDefaults, type YieldCfg } from '~/utils/library'
+import { bestCards, canopy, clearance, fitFor, fromByron, libById, LIBRARY, libraryReady, libState, libVersion, setCanopy, setCanopyOverrides, toByron, yieldDefaults, type YieldCfg } from '~/utils/library'
 import { defaultPicks, supportGap, type SupportCfg } from '~/utils/support'
 
 // One shared store for the whole app (client-only, so module scope is safe).
@@ -158,6 +158,7 @@ export function useDesign() {
   const selSp = computed(() => (selSpId.value ? libById.get(selSpId.value) ?? null : null))
   const counts = computed(() => {
     version.value
+    libVersion.value
     const m = new Map<string, number>()
     for (const p of plot.plants) m.set(p.speciesId, (m.get(p.speciesId) ?? 0) + 1)
     return m
@@ -880,6 +881,10 @@ export function useDesign() {
   // and is added as another plot when a design is already open (as in Byron's designer).
   async function importJSONFile(f: File) {
     try {
+      // species ids are checked against the library, so wait for it to arrive from the database first
+      if (libState.value === 'loading') say('Loading the species library…')
+      await libraryReady
+      if (libState.value !== 'ready') return say('The species library is unavailable right now, so the file can\'t be opened. Try again in a minute.')
       const d = JSON.parse(await f.text())
       const project = Array.isArray(d.plots) && d.plots.length > 0
       const one = !project ? d.plot ?? (d.boundary || d.plants || d.rows ? d : null) : null

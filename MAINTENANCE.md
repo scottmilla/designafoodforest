@@ -11,7 +11,7 @@ browser (does nearly all the work)                         server (Vercel functi
 ─────────────────────────────────                          ─────────────────────────
 Intro → Map (Leaflet + our canvas) → Forest (three.js)     /api/geocode (+ /suggest) → Esri World Geocoder, OSM fallback
 all state in app/composables/useDesign.ts                  /api/climate  → Open-Meteo (10-yr history + weather)
-designs saved in localStorage; files via JSON / KML        /api/species  → MongoDB if connected, else the bundled library
+designs saved in localStorage; files via JSON / KML        /api/species  → the species library, from MongoDB (only)
 /admin: the species library editor                         /api/admin/*  → sign-in + species edits (MongoDB)
 ```
 
@@ -32,9 +32,10 @@ designs saved in localStorage; files via JSON / KML        /api/species  → Mon
 | `app/components/ui/*` | Panels: `Intro`, `MapHud`, `StepDock` (flip card) → `LandPanel` / `RowsPanel` / `PlantPanel`, `HarvestBody`, `SpeciesCard`, `ForestHud`. |
 | `app/assets/css/main.css` | All styling (the lasur/watercolour look). Colours and the shared edge margin `--edge` are CSS variables at the top. |
 | `server/api/*`, `server/model/climate.ts` | The two routes and the hardiness-zone / climate maths. |
-| `shared/types.ts`, `shared/library.json` | Types shared by app and server; the **generated** species library. |
-| `data/` | Source data: `SPECIES_DATA_LIBRARY.md` (Byron's Codex), `pff-species.ts` (our species model), `syntropic-designer-v13.html` (his original, for reference). |
-| `scripts/build-library.ts` | Turns the two data sources into `shared/library.json`. |
+| `shared/types.ts` | Types shared by app and server. |
+| `private/` (git-ignored, not in the repo) | `SPECIES_DATA_LIBRARY.md` (Byron's Codex) and the `library.json` built from it. The live library is in MongoDB; this is the working copy for `npm run library` and the tests. Keep a backup (Export JSON in `/admin`). |
+| `data/` | `pff-species.ts` (our species model), `syntropic-designer-v13.html` (Byron's original, for reference). |
+| `scripts/build-library.ts` | Turns the Codex + our species model into `private/library.json`, to import in `/admin`. |
 
 Commands:
 
@@ -43,7 +44,7 @@ npm install
 npm run dev        # http://localhost:3000
 npm test           # geometry + library tests
 npm run typecheck  # TypeScript across app and server
-npm run library    # rebuild shared/library.json (needs Node 24+; commit the result)
+npm run library    # rebuild private/library.json from private/SPECIES_DATA_LIBRARY.md (Node 24+), then import it in /admin
 npm run build      # production build (what Vercel runs)
 ```
 
@@ -98,18 +99,18 @@ What will actually limit you, in the order you'll hit them:
    - `NUXT_ARCGIS_KEY`: ArcGIS key for the address search (recommended for commercial use).
    - `NUXT_MONGODB_URI` (+ `NUXT_MONGODB_DB`): the species database. MongoDB Atlas: create a free cluster, a database user, allow network access from `0.0.0.0/0` (Vercel's IPs change), copy the connection string.
    - `NUXT_ADMIN_PASSWORD`: the password for `/admin`. Without it the admin panel stays closed. `NUXT_SESSION_SECRET` (32+ random characters) signs its cookie.
-   - First time with a database: open `/admin`, sign in, press **Copy the bundled library into the database**. Until then (or with no database) everyone gets the bundled library, exactly as before.
+   - **The species library is only in the database.** With no database (or an empty one) the designer has no species to plant. First time: open `/admin`, sign in, **Import a library file** (`private/library.json`, or an Export JSON). Export a backup from `/admin` now and then.
 4. Deploy. Check: the title loads, an address flies the map, tracing land works, *Step inside* shows the forest.
 
 What `nuxt.config.ts` sets up for it: the app shell is a prerendered static file (fast, no function call), API answers are cached by Vercel's CDN through `cache-control` headers each route sets (never `swr` / `isr` route rules on the API: on Vercel those become ISR functions that don't receive the query string, which broke the climate and address lookups), functions get up to 30 s (`nitro.vercel.functions.maxDuration`), hashed assets cache for a year, and basic security headers are sent. `NITRO_PRESET=vercel npm run build` reproduces the Vercel build locally (output in `.vercel/output`, ignored by git).
 
-Before going public: confirm you have **permission to publish Byron Austin's Codex data** (`data/SPECIES_DATA_LIBRARY.md` and the derived `shared/library.json` ship in the app's JavaScript), and decide which imagery and geocoding provider you'll license for commercial use (section 3).
+Before going public: confirm you have **permission to publish Byron Austin's Codex data**: it's no longer in the repo, but `/api/species` still sends the whole library to every visitor's browser (the designer needs it to plant), and decide which imagery and geocoding provider you'll license for commercial use (section 3).
 
 ## 5. Common changes
 
 **Add or edit a species (with a database): `/admin`.** Sign in, pick a species, edit, Save. New species: ＋ New species (or Duplicate a similar one). Every field is checked by `shared/speciesSchema.ts`. The designer picks changes up within about 30 seconds (`/api/species` is cached that long). Ids never change once made: saved designs refer to them. **Export JSON** in the admin panel is your backup.
 
-**Add or edit a species (without a database, or to change what ships).** Codex species: edit its card in `data/SPECIES_DATA_LIBRARY.md` (keep the `**Strata:**`, `**Dimensions:**`, `**Target RS:**` line formats). Zones, yields, prices, colours, form: `data/pff-species.ts`, and make sure the Codex name maps to it in `MATCH` in `scripts/build-library.ts` (`look:` borrows only colour and form). Then `npm run library`, `npm test`, commit `shared/library.json`.
+**Rebuild the whole library from the Codex.** Edit its card in `private/SPECIES_DATA_LIBRARY.md` (keep the `**Strata:**`, `**Dimensions:**`, `**Target RS:**` line formats). Zones, yields, prices, colours, form: `data/pff-species.ts`, and make sure the Codex name maps to it in `MATCH` in `scripts/build-library.ts` (`look:` borrows only colour and form). Then `npm run library`, `npm test`, and in `/admin` → **Replace with a file…** `private/library.json` (this overwrites edits made in the admin panel: export first).
 
 **A genus card is too tender or too hardy** (e.g. citrus): add it to `HARDY_END` in the build script. **A price looks wrong:** `PRICE_FIX` in the same file, or edit `price` in `pff-species.ts`.
 
@@ -124,7 +125,7 @@ Before going public: confirm you have **permission to publish Byron Austin's Cod
 ## 6. Things that will bite you
 
 - **New or renamed component files:** restart `npm run dev`. Nuxt's auto-import doesn't always notice, and the symptom is an empty `<harvestbody>` tag.
-- **`shared/library.json` is generated.** Don't hand-edit it; change the sources and rebuild. If species suddenly look wrong, you probably forgot to rebuild.
+- **The library is in the database, not the code.** A fresh clone has no species: tests that need them skip, and the dev server needs `NUXT_MONGODB_URI` pointing at a database with the library imported.
 - **Byron file compatibility.** Species ids are rebuilt with his `sp_<name>_<strata>` rule (`toByron` / `fromByron` in `library.ts`). Renaming a Codex species changes its id and breaks old files that use it.
 - **The page is pinned to the visible window** (`pin()` in `pages/index.vue` plus the "one fixed, non-scrolling page" block in `main.css`) and browser pinch-zoom is blocked, because zoomed pages pushed the panels off screen. The map and forest have their own zoom. Don't remove either without testing small windows.
 - **CSS that targets `canvas`** can hit Leaflet's overlay (`canvas.design-ov`) as well as the 3D one. Keep selectors specific.

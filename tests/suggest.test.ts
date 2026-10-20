@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import type { Site } from '../shared/types'
 import { fitFor } from '../app/utils/library'
 import { GOALS, suggestDesign } from '../app/utils/suggest'
+import { hasLibrary } from './privateLibrary'
 
 const site = (over: Partial<Site> = {}): Site => ({
   label: 'Test', country: 'US', lat: 38.5, lon: -75.8, region: 'na-east', zone: 8, zoneLabel: '8a', climate: 'temperate', minTempC: -12, meanTempC: 14,
   precipMm: 1200, frostFreeDays: 230, chillHours: 1400, dryMonths: 0, hemisphere: 'N', ...over,
 })
 
-describe('suggest a design (the engine, ported)', () => {
+describe.skipIf(!hasLibrary)('suggest a design (the engine, ported)', () => {
   it('only suggests species that can grow at the address', () => {
     for (const g of GOALS) {
       const sg = suggestDesign(site(), [g.id], 20000)!

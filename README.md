@@ -5,13 +5,13 @@ A syntropic food forest designer for your actual land. Type an address, fly down
 It blends two tools:
 
 - **Plant a Food Forest** (`../plantafoodforest`): the look and feel. Fondamento + Alegreya, lasur watercolour cards, the live sky and weather at the site, the 3D plants, the gardener, the year slider.
-- **Byron Austin's Syntropic Planting Designer v13** (`data/syntropic-designer-v13.html`) and **Food-Forestry Codex VOL2_4 Species Data Cards** (`data/SPECIES_DATA_LIBRARY.md`): the technical substance. Satellite boundary, straight and keyline rows, A/B lines, fill zones, Target and Design RS spacing, row patterns, production model, KML in and out.
+- **Byron Austin's Syntropic Planting Designer v13** (`data/syntropic-designer-v13.html`) and **Food-Forestry Codex VOL2_4 Species Data Cards** (private: kept in the species database, not in this repo): the technical substance. Satellite boundary, straight and keyline rows, A/B lines, fill zones, Target and Design RS spacing, row patterns, production model, KML in and out.
 
 ```bash
 npm install
 npm run dev       # http://localhost:3000
 npm test          # geometry + library tests
-npm run library   # rebuild shared/library.json after editing either species source
+npm run library   # rebuild private/library.json from the private Codex copy, then import it in /admin
 npm run typecheck # TypeScript across app and server
 ```
 
@@ -35,7 +35,7 @@ Designs auto-save on the device. ☰ exports KML (Google Earth) and a design JSO
 
 ## The species library
 
-`scripts/build-library.ts` parses every Codex card (169 cards, 128 species) and joins each to our species model (`data/pff-species.ts`, copied from plantafoodforest) for what the cards don't carry: hardiness zones, chill hours, yields, harvest months, prices, colours and plant form. Spacing, dimensions, soil, pruning, succession and hard bans always come from the Codex. Where the Codex marks a "20×14 m" figure as Matrix biomass notation (its Section 5), or lists dwarf and standard sizes, the parser takes the plant's real standard size; 27 cards read differently from the v13 designer's parser for that reason. Yields from the species model are scaled to the Codex canopy size. Edit either source and run `npm run library`.
+`scripts/build-library.ts` parses every Codex card (169 cards, 128 species) and joins each to our species model (`data/pff-species.ts`, copied from plantafoodforest) for what the cards don't carry: hardiness zones, chill hours, yields, harvest months, prices, colours and plant form. Spacing, dimensions, soil, pruning, succession and hard bans always come from the Codex. Where the Codex marks a "20×14 m" figure as Matrix biomass notation (its Section 5), or lists dwarf and standard sizes, the parser takes the plant's real standard size; 27 cards read differently from the v13 designer's parser for that reason. Yields from the species model are scaled to the Codex canopy size. The library lives only in MongoDB (see `.env.example`) and is edited at `/admin`; the Codex source and its build output are kept privately in the git-ignored `private/` folder.
 
 Site fit (`app/utils/library.ts → fitFor`) applies the Codex frost bans first, then zones and chill, then the Codex climate tags.
 

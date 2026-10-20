@@ -2,7 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import type { Code, CodexClimate, LibSpecies } from '#shared/types'
 import type { RecipeStep, Scope } from '~/composables/useDesign'
-import { cardsForClimates, CLIMATE_TAGS, CODES, codexWidthOf, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
+import { cardsForClimates, CLIMATE_TAGS, libError, libState, CODES, codexWidthOf, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
 import { fmtDist, fmtLen, fmtRange, fmtSpan, fromUnit, lenUnit, toUnit } from '~/utils/fmt'
 import { GOALS, GROUP_NAME, suggestDesign, type Goal, type Suggestion } from '~/utils/suggest'
 import { DENSITY, supportCandidates, type Density } from '~/utils/support'
@@ -275,7 +275,7 @@ const DENSITIES = Object.keys(DENSITY) as Density[]
           <span class="fitdot" :title="d.fits.value.get(sp.id)?.why">{{ dot(sp) }}</span>
         </button>
       </section>
-      <p v-if="!grouped.length" class="empty">{{ q ? 'Nothing by that name in the Codex.' : 'Nothing in this group grows here.' }}</p>
+      <p v-if="!grouped.length" class="empty">{{ libState === 'loading' ? '🌱 Loading the species library…' : libState === 'error' ? `⚠ The species library couldn't be loaded: ${libError}` : q ? 'Nothing by that name in the Codex.' : 'Nothing in this group grows here.' }}</p>
     </div>
     <button v-if="!q && hidden && !climates.length" class="linkish" @click="d.ui.showAll = !d.ui.showAll">{{ d.ui.showAll ? 'Hide' : 'Show' }} {{ hidden }} species that won't grow here</button>
 

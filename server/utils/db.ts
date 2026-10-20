@@ -1,13 +1,10 @@
 import { MongoClient, type Collection } from 'mongodb'
 import type { LibSpecies } from '../../shared/types'
-import raw from '../../shared/library.json'
 
-// The species library can live in MongoDB, so it can be edited in the admin panel (/admin) without a code change.
+// The species library lives only in MongoDB (it is not in the code), edited in the admin panel (/admin).
 //   NUXT_MONGODB_URI   e.g. mongodb+srv://user:pass@cluster0.example.mongodb.net  (MongoDB Atlas works well with Vercel)
 //   NUXT_MONGODB_DB    database name, default "designafoodforest"
-// With no URI, or an empty collection, everyone gets the bundled library (shared/library.json) exactly as before.
-
-export const BUNDLED = raw as unknown as LibSpecies[]
+// Back it up with Export JSON in /admin; restore or load one with Import there.
 export type SpeciesDoc = LibSpecies & { _id: string; order: number; updatedAt: Date; updatedBy?: string }
 
 let client: Promise<MongoClient> | null = null
@@ -59,8 +56,8 @@ export function fromDoc(d: SpeciesDoc): LibSpecies {
 }
 export const toDoc = (sp: LibSpecies, order: number, by?: string): SpeciesDoc => ({ ...sp, _id: sp.id, order, updatedAt: new Date(), ...(by ? { updatedBy: by } : {}) })
 
-// the library everyone sees: the database's when it has one, otherwise the bundled one
-export async function readLibrary(): Promise<{ species: LibSpecies[]; source: 'db' | 'bundled'; updatedAt: string | null; error?: string }> {
+// the library everyone sees. Empty, with a reason, when there's no database or it can't be reached
+export async function readLibrary(): Promise<{ species: LibSpecies[]; source: 'db' | 'none'; updatedAt: string | null; error?: string }> {
   let col: Collection<SpeciesDoc> | null = null
   let docs: SpeciesDoc[] = []
   try {
@@ -71,10 +68,10 @@ export async function readLibrary(): Promise<{ species: LibSpecies[]; source: 'd
     client = null // try a fresh connection next time
     lastDbError = explainDbError(e)
     console.error('[species db]', lastDbError, '|', (e as any)?.name, (e as any)?.code ?? '')
-    return { species: BUNDLED, source: 'bundled', updatedAt: null, error: `The species database is not answering; showing the bundled library. ${lastDbError}` }
+    return { species: [], source: 'none', updatedAt: null, error: `The species database is not answering. ${lastDbError}` }
   }
-  if (!col) return { species: BUNDLED, source: 'bundled', updatedAt: null }
-  if (!docs.length) return { species: BUNDLED, source: 'bundled', updatedAt: null }
+  if (!col) return { species: [], source: 'none', updatedAt: null, error: 'No species database is connected (NUXT_MONGODB_URI).' }
+  if (!docs.length) return { species: [], source: 'db', updatedAt: null, error: 'The species database is empty: import a library in /admin.' }
   const latest = docs.reduce((a, d) => (d.updatedAt > a ? d.updatedAt : a), new Date(0))
   return { species: docs.map(fromDoc), source: 'db', updatedAt: latest.toISOString() }
 }

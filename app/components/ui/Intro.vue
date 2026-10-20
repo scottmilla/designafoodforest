@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { fmtAreaShort, type SavedDesign } from '~/composables/useDesign'
 import { polyAreaM2 } from '~/utils/geo'
+import { libError, libState } from '~/utils/library'
 
 // The title: the painted forest behind, one question in front.
 const d = useDesign()
@@ -29,6 +30,7 @@ const ago = (t: number) => {
       <h2>Where is your land?</h2>
       <p class="lede">Type the address. We'll fly down onto it, read ten years of its sky, and hand you the tools to plant it.</p>
       <AddressSearch big autofocus />
+      <p v-if="libState === 'error'" class="err">⚠ The species library couldn't be loaded ({{ libError }}). You can still look at your land; planting needs the library.</p>
       <p class="fine">Pick from the suggestions as you type. An address, a town, a farm name, or coordinates like <i>-36.647, 174.639</i>.</p>
 
       <template v-if="d.saves.value.length">

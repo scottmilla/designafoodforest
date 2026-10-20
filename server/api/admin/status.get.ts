@@ -1,5 +1,5 @@
 import { adminConfigured, adminSession } from '../../utils/admin'
-import { BUNDLED, dbConfigured, explainDbError, speciesCollection } from '../../utils/db'
+import { dbConfigured, explainDbError, speciesCollection } from '../../utils/db'
 
 // GET /api/admin/status: is the panel set up, am I signed in, is there a database and what's in it
 export default defineEventHandler(async (event) => {
@@ -16,5 +16,5 @@ export default defineEventHandler(async (event) => {
       dbError = explainDbError(e) // only shown to a signed-in admin
     }
   }
-  return { configured, signedIn, db, dbError, count, bundled: BUNDLED.length }
+  return { configured, signedIn, db, dbError, count }
 })

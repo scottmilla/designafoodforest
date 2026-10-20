@@ -11,12 +11,14 @@ import { MONTH_NAMES } from '~/utils/fmt'
 // the species in MongoDB (NUXT_MONGODB_URI). Every save is checked by shared/speciesSchema.ts, here and on the server.
 useHead({ title: 'Species library · Design a Food Forest' })
 
-interface Status { configured: boolean; signedIn: boolean; db: 'none' | 'connected' | 'error'; dbError: string | null; count: number; bundled: number }
+interface Status { configured: boolean; signedIn: boolean; db: 'none' | 'connected' | 'error'; dbError: string | null; count: number }
 const status = ref<Status | null>(null)
 const password = ref('')
 const loginError = ref('')
 const list = ref<LibSpecies[]>([])
-const source = ref<'db' | 'bundled'>('bundled')
+const source = ref<'db' | 'none'>('none')
+const fileIn = ref<HTMLInputElement | null>(null)
+const replaceOnImport = ref(false)
 const q = ref('')
 const strata = ref<Code | null>(null)
 const climates = ref<CodexClimate[]>([])
@@ -33,10 +35,10 @@ async function loadStatus() {
   if (status.value.signedIn) await loadList()
 }
 async function loadList() {
-  const r = await $fetch<{ species: LibSpecies[]; source: 'db' | 'bundled'; error?: string }>('/api/admin/species')
+  const r = await $fetch<{ species: LibSpecies[]; source: 'db' | 'none'; error?: string }>('/api/admin/species')
   list.value = r.species
   source.value = r.source
-  if (r.error) note.value = r.error
+  if (r.error && r.species.length) note.value = r.error
 }
 onMounted(loadStatus)
 
@@ -57,7 +59,7 @@ async function logout() {
 }
 
 const canWrite = computed(() => status.value?.db === 'connected')
-const editable = computed(() => canWrite.value && source.value === 'db')
+const editable = computed(() => canWrite.value)
 const shown = computed(() => {
   const t = q.value.trim().toLowerCase()
   return list.value.filter((s) => (!strata.value || s.code === strata.value) && (!climates.value.length || s.climates.some((c) => climates.value.includes(c))) && (!t || s.name.toLowerCase().includes(t) || s.latin.toLowerCase().includes(t) || s.id.includes(t)))
@@ -122,15 +124,34 @@ async function remove() {
     busy.value = false
   }
 }
-async function seed(replace = false) {
-  if (replace && !confirm('Put every bundled Codex species back as shipped? Your edits to those species are lost; species you added stay.')) return
-  busy.value = true
+// load a library file (an Export JSON from here) into the database: add/update, or replace everything
+function pickFile(replace: boolean) {
+  replaceOnImport.value = replace
+  fileIn.value?.click()
+}
+async function importFile(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0]
+  ;(e.target as HTMLInputElement).value = ''
+  if (!f) return
+  let species: unknown
   try {
-    const r = await $fetch<{ total: number }>('/api/admin/seed', { method: 'POST', body: { replace } })
-    note.value = `The database now holds ${r.total} species.`
+    const d = JSON.parse(await f.text())
+    species = Array.isArray(d) ? d : d.species
+  } catch {
+    note.value = "That file isn't JSON."
+    return
+  }
+  const replace = replaceOnImport.value
+  if (replace && list.value.length && !confirm(`Replace the whole library with this file? The ${list.value.length} species there now are deleted unless they're in the file. Export first if you might want them back.`)) return
+  busy.value = true
+  errors.value = []
+  try {
+    const r = await $fetch<{ added: number; updated: number; total: number }>('/api/admin/import', { method: 'POST', body: { species, replace } })
+    note.value = `Imported: ${r.added} added, ${r.updated} updated. The database now holds ${r.total} species.`
     await loadStatus()
-  } catch (e) {
-    note.value = err(e)
+  } catch (er: any) {
+    note.value = err(er)
+    errors.value = er?.data?.data?.errors ?? []
   } finally {
     busy.value = false
   }
@@ -183,7 +204,7 @@ function setHarvest(i: 0 | 1, v: string) {
         <NuxtLink to="/" class="chip">← The designer</NuxtLink>
         <template v-if="status?.signedIn">
           <span class="chip tiny badge-db" :class="status.db">
-            {{ status.db === 'connected' ? (source === 'db' ? `🗄 Database · ${list.length} species` : '🗄 Database connected · empty') : status.db === 'error' ? '⚠ Database not answering' : '📦 No database: bundled library (read-only)' }}
+            {{ status.db === 'connected' ? (list.length ? `🗄 Database · ${list.length} species` : '🗄 Database connected · empty') : status.db === 'error' ? '⚠ Database not answering' : '⚠ No database connected' }}
           </span>
           <button class="chip" :disabled="!editable || busy" @click="create()">＋ New species</button>
           <button class="chip" :disabled="!list.length" @click="exportJSON">⬇ Export JSON</button>
@@ -211,12 +232,14 @@ function setHarvest(i: 0 | 1, v: string) {
         <button class="chip gap-top" :disabled="busy" @click="loadStatus">↻ Try again</button>
       </section>
       <section v-else-if="status.db === 'none'" class="card admin-card note">
-        <b>No database connected.</b> You're looking at the bundled Codex library. To edit it, set <code>NUXT_MONGODB_URI</code> (MongoDB Atlas works well) and reload.
+        <b>No database connected.</b> The species library lives only in the database, so the designer has no species until one is connected. Set <code>NUXT_MONGODB_URI</code> (MongoDB Atlas works well) and reload.
       </section>
-      <section v-else-if="status.db === 'connected' && source === 'bundled'" class="card admin-card note">
-        <b>The database is connected but empty.</b> Copy the {{ status.bundled }} bundled Codex species into it to start editing.
-        <button class="btn btn-primary gap-top" :disabled="busy" @click="seed(false)">⬆ Copy the bundled library into the database</button>
+      <section v-else-if="status.db === 'connected' && !list.length" class="card admin-card note">
+        <b>The database is connected but empty.</b> Import a library file (an Export JSON from this page) to fill it, or add species one by one.
+        <button class="btn btn-primary gap-top" :disabled="busy" @click="pickFile(false)">⬆ Import a library file</button>
       </section>
+      <input ref="fileIn" type="file" accept=".json,application/json" hidden @change="importFile">
+      <ul v-if="!form && errors.length" class="err-list"><li v-for="(e, i) in errors" :key="i">{{ e }}</li></ul>
       <p v-if="note" class="admin-note">{{ note }}</p>
 
       <div class="admin-grid">
@@ -238,7 +261,10 @@ function setHarvest(i: 0 | 1, v: string) {
               </button>
             </li>
           </ul>
-          <button v-if="editable" class="linkish" :disabled="busy" @click="seed(true)">Reset bundled species to the shipped Codex…</button>
+          <div v-if="editable" class="presets">
+            <button class="linkish" :disabled="busy" title="Add new species and update ones with the same id" @click="pickFile(false)">⬆ Import a file</button>
+            <button class="linkish" :disabled="busy" title="Make the library exactly this file" @click="pickFile(true)">Replace with a file…</button>
+          </div>
         </aside>
 
         <!-- the editor -->
@@ -250,7 +276,7 @@ function setHarvest(i: 0 | 1, v: string) {
             <button v-if="!isNew" class="chip" :disabled="!editable || busy" @click="create(form)">Duplicate</button>
             <button v-if="!isNew" class="chip danger" :disabled="!editable || busy" @click="remove">Delete</button>
           </header>
-          <p v-if="!editable" class="fine">Read-only: {{ canWrite ? 'copy the bundled library into the database first.' : 'connect a database to edit.' }}</p>
+          <p v-if="!editable" class="fine">Read-only: connect a database to edit.</p>
           <ul v-if="errors.length" class="err-list"><li v-for="(e, i) in errors" :key="i">{{ e }}</li></ul>
 
           <fieldset :disabled="!editable">

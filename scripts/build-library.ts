@@ -1,8 +1,11 @@
-// Builds shared/library.json: every Codex data card (Byron Austin's Food-Forestry Codex VOL2_4, in
-// data/SPECIES_DATA_LIBRARY.md) joined with our species model (data/pff-species.ts) for the things the
+// Builds private/library.json: every Codex data card (Byron Austin's Food-Forestry Codex VOL2_4, in
+// private/SPECIES_DATA_LIBRARY.md) joined with our species model (data/pff-species.ts) for the things the
 // cards don't carry: hardiness zones, yields, harvest months, prices, leaf/fruit colour and plant form.
 //
 //   node scripts/build-library.ts      (Node 24+ runs TypeScript directly)
+//
+// The Codex and its output are private (git-ignored, not in the repo): the library lives in the database. To load a
+// fresh build into it, use /admin → "Import a file" with private/library.json.
 //
 // Re-run it whenever either source changes. Spacing, dimensions, soil, pruning and hard bans always come
 // from the Codex; the species model only fills gaps.
@@ -10,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { SPECIES, type Species } from '../data/pff-species.ts'
 import type { Code, CodexClimate, Form, LibSpecies, Lifecycle, Strata, Succession } from '../shared/types.ts'
 
-const md = readFileSync(new URL('../data/SPECIES_DATA_LIBRARY.md', import.meta.url), 'utf8')
+const md = readFileSync(new URL('../private/SPECIES_DATA_LIBRARY.md', import.meta.url), 'utf8')
 const byId = new Map(SPECIES.map((s) => [s.id, s]))
 
 // Codex name → species-model id. "look:" borrows only colour and form (a different species that looks
@@ -227,6 +230,6 @@ for (const blk of md.split(/(?=^### )/m)) {
   out.push(sp)
 }
 
-writeFileSync(new URL('../shared/library.json', import.meta.url), JSON.stringify(out))
-console.log(`${out.length} cards → shared/library.json`)
+writeFileSync(new URL('../private/library.json', import.meta.url), JSON.stringify(out))
+console.log(`${out.length} cards → private/library.json (import it in /admin)`)
 if (unmatched.length) console.log(`no species-model match (Codex data + defaults only): ${[...new Set(unmatched)].join(', ')}`)

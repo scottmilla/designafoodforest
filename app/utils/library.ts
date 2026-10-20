@@ -1,14 +1,21 @@
 import { reactive, ref } from 'vue'
 import type { ClimateClass, Code, CodexClimate, LibSpecies, Lifecycle, Site } from '#shared/types'
-import raw from '#shared/library.json'
 
-// The species library: Byron Austin's Codex data cards joined with our species model (see scripts/build-library.ts).
-// The app starts with this bundled copy; if a species database is connected (edited in /admin), its library is
-// swapped in by setLibrary as soon as /api/species answers (plugins/library.client.ts).
-export const LIBRARY = (raw as unknown as LibSpecies[]).slice()
-export const libById = new Map(LIBRARY.map((s) => [s.id, s]))
-export const libVersion = ref(0) // bumps when the library is swapped, so computed lists refresh
-export const libSource = ref<'bundled' | 'db'>('bundled')
+// The species library: Byron Austin's Codex data cards joined with our species model. It lives only in the database
+// (edited in /admin) and is not in the code: the app starts empty and plugins/library.client.ts fills it from
+// /api/species as soon as the page loads. Anything that needs species waits on `libraryReady`.
+export const LIBRARY: LibSpecies[] = []
+export const libById = new Map<string, LibSpecies>()
+export const libVersion = ref(0) // bumps when the library arrives or changes, so computed lists refresh
+export const libState = ref<'loading' | 'ready' | 'error'>('loading')
+export const libError = ref('')
+let markReady: () => void = () => {}
+export const libraryReady = new Promise<void>((r) => (markReady = r)) // settles once the library is in (or failed for good)
+export function libraryFailed(msg: string) {
+  libState.value = 'error'
+  libError.value = msg
+  markReady()
+}
 
 // Byron's designer ids its species sp_<name>_<strata>(_n) as it parses the same Codex file. Rebuilding his
 // ids the same way lets design files move between his v13 designer and this one in both directions.
@@ -30,14 +37,16 @@ function byronIds() {
 }
 byronIds()
 
-export function setLibrary(list: LibSpecies[], source: 'bundled' | 'db') {
+export function setLibrary(list: LibSpecies[]) {
   if (!list.length) return
   const keep = { ...canopy }
   LIBRARY.splice(0, LIBRARY.length, ...list)
   libById.clear()
   for (const s of LIBRARY) libById.set(s.id, s)
   byronIds()
-  libSource.value = source
+  libState.value = 'ready'
+  libError.value = ''
+  markReady()
   codexWidth.clear() // fresh objects: nothing to restore, just re-apply the design's overrides
   setCanopyOverrides(keep)
 }

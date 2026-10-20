@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Site } from '../shared/types'
 import { fitFor, fromByron, libById, LIBRARY, toByron, yieldAt, yieldDefaults } from '../app/utils/library'
+import { hasLibrary } from './privateLibrary'
 
 const site = (zone: number, climate: Site['climate'], minTempC: number, chillHours = 800): Site => ({
   label: 'Test', country: 'US', lat: 38, lon: -77, region: 'na-east', zone, zoneLabel: String(zone), climate, minTempC, meanTempC: 13,
   precipMm: 1000, frostFreeDays: 200, chillHours, dryMonths: 0, hemisphere: 'N',
 })
 
-describe('species library (Codex VOL2_4 + species model)', () => {
+describe.skipIf(!hasLibrary)('species library (Codex VOL2_4 + species model)', () => {
   it('has every data card, each with Codex spacing', () => {
     expect(LIBRARY.length).toBe(169)
     for (const sp of LIBRARY) {
@@ -36,7 +37,7 @@ describe('species library (Codex VOL2_4 + species model)', () => {
   })
 })
 
-describe('will it grow here', () => {
+describe.skipIf(!hasLibrary)('will it grow here', () => {
   it('honours the Codex frost bans', () => {
     expect(fitFor(libById.get('date-palm-e')!, site(7, 'temperate', -17)).level).toBe('no')
     expect(fitFor(libById.get('ice-cream-bean-e')!, site(9, 'subtropical', -4)).level).toBe('no')
@@ -48,7 +49,7 @@ describe('will it grow here', () => {
   })
 })
 
-describe('production curve', () => {
+describe.skipIf(!hasLibrary)('production curve', () => {
   it('ramps to a peak, plateaus, then declines', () => {
     const c = { first: 3, peak: 6, end: 30, perPlant: 50, price: 2 }
     expect(yieldAt(c, 2)).toBe(0)
@@ -62,7 +63,7 @@ describe('production curve', () => {
   })
 })
 
-describe('genus cards', () => {
+describe.skipIf(!hasLibrary)('genus cards', () => {
   it('offers hardy citrus in zone 8a as an edge fit, and plain citrus where it is easy', () => {
     const citrus = libById.get('citrus-m')!
     expect(fitFor(citrus, site(8, 'temperate', -12)).level).toBe('edge')
