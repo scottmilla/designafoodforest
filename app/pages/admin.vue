@@ -11,7 +11,7 @@ import { MONTH_NAMES } from '~/utils/fmt'
 // the species in MongoDB (NUXT_MONGODB_URI). Every save is checked by shared/speciesSchema.ts, here and on the server.
 useHead({ title: 'Species library · Design a Food Forest' })
 
-interface Status { configured: boolean; signedIn: boolean; db: 'none' | 'connected' | 'error'; count: number; bundled: number }
+interface Status { configured: boolean; signedIn: boolean; db: 'none' | 'connected' | 'error'; dbError: string | null; count: number; bundled: number }
 const status = ref<Status | null>(null)
 const password = ref('')
 const loginError = ref('')
@@ -204,7 +204,12 @@ function setHarvest(i: 0 | 1, v: string) {
     </form>
 
     <template v-else-if="status?.signedIn">
-      <section v-if="status.db === 'none'" class="card admin-card note">
+      <section v-if="status.db === 'error'" class="card admin-card note bad">
+        <b>⚠ Can't reach the species database.</b> {{ status.dbError }}
+        <span class="fine tight">Change it in your hosting's environment variables (Vercel → Settings → Environment Variables), redeploy, then reload this page.</span>
+        <button class="chip gap-top" :disabled="busy" @click="loadStatus">↻ Try again</button>
+      </section>
+      <section v-else-if="status.db === 'none'" class="card admin-card note">
         <b>No database connected.</b> You're looking at the bundled Codex library. To edit it, set <code>NUXT_MONGODB_URI</code> (MongoDB Atlas works well) and reload.
       </section>
       <section v-else-if="status.db === 'connected' && source === 'bundled'" class="card admin-card note">
@@ -380,5 +385,6 @@ label.block small { font-weight: 500; opacity: .65; }
 .lbl { font-size: .8rem; font-weight: 700; margin: .7rem 0 .3rem; }
 .err-list { color: #b3261e; font-weight: 600; margin: .6rem 0; padding-left: 1.2rem; }
 .chip.danger:hover { background: #ffd6d0; }
+.admin-card.note.bad { background: #ffeae6; border-color: #b3261e; }
 code { background: #fff8e8; padding: 0 .3em; border-radius: 4px; }
 </style>

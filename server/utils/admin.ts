@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
 import type { H3Event } from 'h3'
-import { speciesCollection } from './db'
+import { explainDbError, speciesCollection } from './db'
 
 // The admin panel's lock: one shared password (NUXT_ADMIN_PASSWORD), and a signed, http-only session cookie once
 // you're in. NUXT_SESSION_SECRET (32+ characters) signs the cookie; without it one is derived from the password,
@@ -33,8 +33,8 @@ export async function requireAdmin(event: H3Event) {
 }
 
 export async function requireDb() {
-  const col = await speciesCollection().catch(() => {
-    throw createError({ statusCode: 502, statusMessage: 'Could not reach the species database. Check NUXT_MONGODB_URI.' })
+  const col = await speciesCollection().catch((e) => {
+    throw createError({ statusCode: 502, statusMessage: `Could not reach the species database. ${explainDbError(e)}` })
   })
   if (!col) throw createError({ statusCode: 503, statusMessage: 'No database is connected: set NUXT_MONGODB_URI to edit the library.' })
   return col
