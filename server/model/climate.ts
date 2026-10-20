@@ -38,7 +38,6 @@ export function summarise(d: DailySeries, lat: number): ClimateSummary {
   const monthT = Array.from({ length: 12 }, () => ({ sum: 0, n: 0 }))
   const monthP = Array.from({ length: 12 }, () => 0)
   const years = new Set<number>()
-  let frostFree = 0
   let chill = 0
   let sum = 0
   let n = 0
@@ -60,7 +59,6 @@ export function summarise(d: DailySeries, lat: number): ClimateSummary {
     precip += d.precip[i] ?? 0
     sum += mean
     n++
-    if (lo > 0) frostFree++
     // chill hours below 7.2 °C over the dormant season, assuming a linear daily temperature ramp
     const dormant = south ? m >= 4 && m <= 7 : m >= 10 || m <= 1
     if (dormant) chill += hi <= 7.2 ? 24 : lo >= 7.2 ? 0 : (24 * (7.2 - lo)) / (hi - lo)
@@ -77,13 +75,49 @@ export function summarise(d: DailySeries, lat: number): ClimateSummary {
     minTempC: mins.reduce((a, b) => a + b, 0) / Math.max(1, mins.length),
     meanTempC: sum / Math.max(1, n),
     precipMm: precip / ny,
-    frostFreeDays: Math.round(frostFree / ny),
+    frostFreeDays: frostFreeSeason(d, south),
     chillHours: Math.round(chill / ny),
     dryMonths: monthPrecip.filter((p) => p < 40).length,
     coldestMonthC: Math.min(...monthMeans),
     warmestMonthC: Math.max(...monthMeans),
     summerDry: sP < wP / 3 && sP < 90,
   }
+}
+
+// The frost-free season, as growers mean it: the days from the last spring frost to the first autumn frost (a night
+// at or below 0 °C), averaged over the years. Each "frost year" runs through one whole summer: the calendar year in
+// the north, July to June in the south. A year with no frost at all counts as 365.
+export function frostFreeSeason(d: DailySeries, south: boolean) {
+  const years = new Map<number, { day: number; frost: boolean }[]>()
+  for (let i = 0; i < d.time.length; i++) {
+    const lo = d.tmin[i]
+    if (lo == null) continue
+    const t = Date.parse(d.time[i]! + 'T00:00:00Z')
+    const date = new Date(t)
+    const y = date.getUTCFullYear()
+    // the frost year this day belongs to, and its first day
+    const fy = south ? (date.getUTCMonth() >= 6 ? y : y - 1) : y
+    const start = Date.UTC(fy, south ? 6 : 0, 1)
+    const list = years.get(fy) ?? []
+    list.push({ day: Math.round((t - start) / 86400000), frost: lo <= 0 })
+    years.set(fy, list)
+  }
+  const seasons: number[] = []
+  for (const days of years.values()) {
+    if (days.length < 330) continue // a part year at either end of the record
+    const len = days[days.length - 1]!.day + 1
+    const mid = Math.round(len * 0.54) // mid-July in the north, mid-January in the south (frost years start 1 July there)
+    let lastSpring = -1
+    let firstAutumn = len
+    for (const x of days) {
+      if (!x.frost) continue
+      if (x.day < mid) lastSpring = Math.max(lastSpring, x.day)
+      else firstAutumn = Math.min(firstAutumn, x.day)
+    }
+    seasons.push(Math.max(0, firstAutumn - lastSpring - 1))
+  }
+  if (!seasons.length) return 0
+  return Math.min(365, Math.round(seasons.reduce((a, b) => a + b, 0) / seasons.length))
 }
 
 // Last-resort guess from latitude alone when the climate archive is unreachable. Flagged as estimated in the UI.

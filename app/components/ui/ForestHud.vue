@@ -91,6 +91,7 @@ onBeforeUnmount(stopPlay)
     <div class="hud-left">
       <section class="climate" :class="{ compact: d.ui.mobile }">
       <p class="place">📍 {{ d.name.value || d.geo.value?.label }}</p>
+      <p v-if="d.geo.value?.place" class="where hide-compact">{{ d.name.value && d.name.value !== d.geo.value.label ? `${d.geo.value.label} · ` : '' }}{{ d.geo.value.place }}</p>
       <p v-if="d.site.value" class="zone"><b>Zone {{ d.site.value.zoneLabel }}</b> · {{ d.scene.value.plants.length.toLocaleString() }} plants</p>
       <p class="now">
         {{ d.ui.forceDay ? '☀️' : d.env.value.icon }}

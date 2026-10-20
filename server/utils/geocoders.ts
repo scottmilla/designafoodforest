@@ -29,6 +29,13 @@ async function throttle() {
 
 // ── Esri ──
 interface EsriCand { address: string; location: { x: number; y: number }; score: number; extent?: { xmin: number; ymin: number; xmax: number; ymax: number }; attributes: Record<string, any> }
+// the wider area in words, without repeats ("Auckland, Auckland, New Zealand" → "Auckland, New Zealand")
+export function placeLine(...parts: (string | undefined)[]) {
+  const out: string[] = []
+  for (const p of parts) if (p && !out.some((o) => o.toLowerCase() === p.toLowerCase())) out.push(p)
+  return out.join(', ') || undefined
+}
+
 function fromEsri(c: EsriCand): GeoResult & { score: number } {
   const a = c.attributes
   const town = a.City || a.Nbrhd || a.Subregion || ''
@@ -42,13 +49,14 @@ function fromEsri(c: EsriCand): GeoResult & { score: number } {
     lon: c.location.x,
     country: iso2(a.Country || a.CntryName || ''),
     precision: esriPrecision(a.Addr_type || ''),
+    place: placeLine(a.Subregion, a.Region, a.CntryName || a.Country),
     ...(e ? { bbox: [e.ymin, e.ymax, e.xmin, e.xmax] as [number, number, number, number] } : {}),
     score: c.score,
   }
 }
 export async function esriFind(q: string, opts: { key?: string; max?: number } = {}) {
   const query = {
-    f: 'json', outFields: 'Addr_type,StAddr,ShortLabel,PlaceName,LongLabel,City,Nbrhd,Subregion,Region,Country', maxLocations: opts.max ?? 5,
+    f: 'json', outFields: 'Addr_type,StAddr,ShortLabel,PlaceName,LongLabel,City,Nbrhd,Subregion,Region,Country,CntryName', maxLocations: opts.max ?? 5,
     SingleLine: q, ...(opts.key ? { magicKey: opts.key } : {}), ...esriAuth(),
   }
   const r = await $fetch<{ candidates?: EsriCand[]; error?: unknown }>(`${ESRI}/findAddressCandidates`, { query, timeout: 8000 })
@@ -81,18 +89,37 @@ export async function nominatim(q: string, max = 5): Promise<(GeoResult & { scor
       lon: +hit.lon,
       country: String(hit.address?.country_code ?? '').toUpperCase(),
       precision: osmPrecision(hit.addresstype ?? hit.type ?? '', !!hit.address?.house_number),
+      place: placeLine(hit.address?.county, hit.address?.state || hit.address?.region, hit.address?.country),
       ...(bb.length === 4 ? { bbox: bb as [number, number, number, number] } : {}),
       score: 80 - i * 5,
     }
   })
 }
-export async function reverse(lat: number, lon: number) {
+// Coordinates → the place they're in: town, county, state, country. Esri first, OpenStreetMap if it's down.
+export async function reverse(lat: number, lon: number): Promise<{ label: string; full: string; country: string; place?: string } | null> {
+  try {
+    const r = await $fetch<any>(`${ESRI}/reverseGeocode`, { query: { f: 'json', location: `${lon},${lat}`, langCode: 'EN', ...esriAuth() }, timeout: 5000 })
+    const a = r?.address
+    if (a && (a.City || a.Subregion || a.Region)) {
+      return {
+        label: placeLine(a.City || a.Subregion, a.RegionAbbr && a.CountryCode === 'USA' ? a.RegionAbbr : a.Region)!,
+        full: a.LongLabel || a.Match_addr || '',
+        country: iso2(a.CountryCode || ''),
+        place: placeLine(a.Subregion, a.Region, a.CntryName),
+      }
+    }
+  } catch {
+    /* fall through to OpenStreetMap */
+  }
   try {
     const p = new URLSearchParams({ format: 'jsonv2', lat: String(lat), lon: String(lon), zoom: '14', addressdetails: '1' })
     await throttle()
     const r = await $fetch<any>(`https://nominatim.openstreetmap.org/reverse?${p}`, { headers: osmHeaders(), timeout: 6000 })
     if (!r?.address) return null
-    return { label: osmLabel(r.address, r.display_name), full: r.display_name as string, country: String(r.address.country_code ?? '').toUpperCase() }
+    return {
+      label: osmLabel(r.address, r.display_name), full: r.display_name as string, country: String(r.address.country_code ?? '').toUpperCase(),
+      place: placeLine(r.address.county, r.address.state || r.address.region, r.address.country),
+    }
   } catch {
     return null
   }

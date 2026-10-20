@@ -748,3 +748,6 @@ html, body { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hid
 .canopy-ed .chip.tiny { margin: 0; }
 
 .key-hint { font-size: .62rem; opacity: .55; margin-left: .2rem; font-family: inherit; }
+
+/* the wider area under the place name: county, state, country */
+.climate .where { margin: -.1rem 0 .15rem; font-size: .82rem; opacity: .72; line-height: 1.2; }

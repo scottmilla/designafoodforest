@@ -49,6 +49,7 @@ export interface GeoResult {
   country: string
   bbox?: [number, number, number, number] // south, north, west, east
   precision?: Precision
+  place?: string // the wider area, for people: "Knox County, Ohio, United States"
 }
 // the best match, plus other places the same words could mean
 export interface GeoAnswer extends GeoResult {

@@ -14,8 +14,10 @@ const cfg = (id: string): YieldCfg => ({ ...yieldDefaults(libById.get(id)!, d.da
 
 const model = computed(() => {
   const counts = d.counts.value
-  const crops = [...counts.keys()].filter((id) => libById.get(id)?.food)
-  const support = [...counts.keys()].filter((id) => !libById.get(id)?.food)
+  // only species the library knows (it arrives from the database a moment after the page loads)
+  const known = [...counts.keys()].filter((id) => libById.has(id))
+  const crops = known.filter((id) => libById.get(id)!.food)
+  const support = known.filter((id) => !libById.get(id)!.food)
   const years = Array.from({ length: d.dash.horizon }, (_, i) => i + 1)
   const cfgs = new Map(crops.map((id) => [id, cfg(id)]))
   // A stratum planted past its canopy share (E 20%, H 40%, M 60%, L 80% of the land) shares that light, so each

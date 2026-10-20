@@ -278,6 +278,21 @@ export function useDesign() {
     startDesign(g)
     flyRequest.value++
   }
+  // coordinates → { label: "Gambier, OH", place: "Knox County, Ohio, United States", country: "US" }
+  async function lookUpPlace(lat: number, lon: number) {
+    return $fetch<GeoAnswer>('/api/geocode', { query: { q: `${lat.toFixed(6)}, ${lon.toFixed(6)}` }, timeout: 9000 }).catch(() => null)
+  }
+  // designs saved or imported before places were looked up: fill in the county / state / country line once
+  async function fillPlace() {
+    const g = geo.value
+    if (!g || g.place) return
+    const near = await lookUpPlace(g.lat, g.lon)
+    if (!near?.place || geo.value !== g) return
+    // an older import stored the file's name as the place (label = full); swap in the real town
+    const placeholder = g.label === g.full && !!near.label
+    geo.value = { ...g, place: near.place, country: g.country || near.country, ...(placeholder ? { label: near.label, full: near.full || near.label } : {}) }
+    scheduleSave()
+  }
   async function readClimate() {
     const g = geo.value
     if (!g) return
@@ -928,7 +943,9 @@ export function useDesign() {
       // Byron's project files carry no name of their own: a project is named after its file, a lone plot after itself
       const fileName = f.name.replace(/\.json$/i, '').replace(/[_-]+/g, ' ').trim()
       const title = d.name || (project && list.length > 1 ? fileName : first.name) || fileName || 'Imported design'
-      const g: GeoResult | null = ex?.geo ?? (at ? { label: title, full: title, lat: at.lat, lon: at.lng, country: '' } : null)
+      // Byron's files carry only coordinates: look up the town, county, state and country they're in
+      const near = !ex?.geo && at ? await lookUpPlace(at.lat, at.lng) : null
+      const g: GeoResult | null = ex?.geo ?? (at ? { label: near?.label || title, full: near?.full || title, lat: at.lat, lon: at.lng, country: near?.country ?? '', ...(near?.place ? { place: near.place } : {}) } : null)
       if (!g) return say('That design has no location.')
       startDesign(g)
       setCanopyOverrides(overrides)
@@ -938,6 +955,7 @@ export function useDesign() {
       resetPlots(list, d.activePlotId)
       fitRequest.value++
       changed(false)
+      fillPlace()
       say(`Opened “${name.value}”${list.length > 1 ? ` with ${list.length} plots` : ''}${skipped()}.`, 5000)
     } catch (e: any) {
       say(`Could not open that file: ${e?.message ?? e}`)
@@ -978,6 +996,7 @@ export function useDesign() {
     uid = sv.uid ?? plot.plants.length + 1
     mapView.value = sv.view
     ui.saves = false
+    fillPlace()
   }
   function deleteSave(id: string) {
     if (currentId.value === id) currentId.value = null

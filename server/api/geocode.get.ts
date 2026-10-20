@@ -19,7 +19,8 @@ export default defineEventHandler(async (event): Promise<GeoAnswer> => {
     const { lat, lon } = coords
     if (Math.abs(lat) > 90 || Math.abs(lon) > 180) throw createError({ statusCode: 400, statusMessage: 'Those coordinates are off the map' })
     const at = await reverse(lat, lon)
-    return { label: at?.label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`, full: at?.full ?? q, lat, lon, country: at?.country ?? '', precision: 'house' }
+    setResponseHeader(event, 'cache-control', 'public, max-age=3600, s-maxage=86400')
+    return { label: at?.label ?? `${lat.toFixed(4)}, ${lon.toFixed(4)}`, full: at?.full ?? q, lat, lon, country: at?.country ?? '', precision: 'house', ...(at?.place ? { place: at.place } : {}) }
   }
 
   const found = await geocode(q, { key, country })

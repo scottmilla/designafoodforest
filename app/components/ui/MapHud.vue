@@ -31,6 +31,7 @@ function startOver() {
     <div class="hud-left">
       <section class="climate" :class="{ compact: d.ui.mobile }">
       <p class="place">📍 {{ d.geo.value?.label }}</p>
+      <p v-if="d.geo.value?.place && d.geo.value.place !== d.geo.value.label" class="where">{{ d.geo.value.place }}</p>
       <p v-if="d.site.value" class="zone"><b>Zone {{ d.site.value.zoneLabel }}</b> · {{ climateName }}<small v-if="d.site.value.estimated"> (est.)</small></p>
       <p v-else-if="d.climateLoading.value" class="meta busy">🌦 reading ten years of your sky…</p>
       <details v-if="d.alternatives.value.length && !d.plot.boundary.length" class="alts">
