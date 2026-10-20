@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import type { Code, LibSpecies } from '#shared/types'
+import type { Code, CodexClimate, LibSpecies } from '#shared/types'
 import {
   blankSpecies, CLIMATES, CODES, FORMS, LAYERS, LIFECYCLES, REGIONS, ROLES, SUCCESSIONS, USES, validateSpecies,
 } from '#shared/speciesSchema'
-import { STRATA } from '~/utils/library'
+import { CLIMATE_TAGS, STRATA } from '~/utils/library'
 import { MONTH_NAMES } from '~/utils/fmt'
 
 // /admin: the species library editor. Signs in with the admin password (NUXT_ADMIN_PASSWORD), reads and writes
@@ -19,6 +19,7 @@ const list = ref<LibSpecies[]>([])
 const source = ref<'db' | 'bundled'>('bundled')
 const q = ref('')
 const strata = ref<Code | null>(null)
+const climates = ref<CodexClimate[]>([])
 const form = ref<LibSpecies | null>(null)
 const isNew = ref(false)
 const errors = ref<string[]>([])
@@ -59,7 +60,7 @@ const canWrite = computed(() => status.value?.db === 'connected')
 const editable = computed(() => canWrite.value && source.value === 'db')
 const shown = computed(() => {
   const t = q.value.trim().toLowerCase()
-  return list.value.filter((s) => (!strata.value || s.code === strata.value) && (!t || s.name.toLowerCase().includes(t) || s.latin.toLowerCase().includes(t) || s.id.includes(t)))
+  return list.value.filter((s) => (!strata.value || s.code === strata.value) && (!climates.value.length || s.climates.some((c) => climates.value.includes(c))) && (!t || s.name.toLowerCase().includes(t) || s.latin.toLowerCase().includes(t) || s.id.includes(t)))
 })
 
 function open(sp: LibSpecies) {
@@ -224,6 +225,9 @@ function setHarvest(i: 0 | 1, v: string) {
           <input v-model="q" class="field" type="search" placeholder="Search name, Latin or id…" aria-label="Search species">
           <div class="presets">
             <button v-for="c in CODES" :key="c" class="chip tiny" :class="{ on: strata === c }" @click="strata = strata === c ? null : c">{{ c }} · {{ STRATA[c].name }}</button>
+          </div>
+          <div class="presets">
+            <button v-for="c in CLIMATE_TAGS" :key="c.id" class="chip tiny" :class="{ on: climates.includes(c.id) }" :aria-pressed="climates.includes(c.id)" @click="climates = climates.includes(c.id) ? climates.filter((x) => x !== c.id) : [...climates, c.id]">{{ c.emoji }} {{ c.id }}</button>
           </div>
           <p class="fine tight">{{ shown.length }} of {{ list.length }}</p>
           <ul>

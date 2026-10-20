@@ -78,6 +78,23 @@ export const STRATA: Record<Code, { name: string; color: string; wash: string; s
   L: { name: 'Low', color: '#c98a2a', wash: '#f6dfae', share: '~80% canopy' },
 }
 export const CODES: Code[] = ['E', 'H', 'M', 'L']
+// the Codex's four climates, for filtering the library
+export const CLIMATE_TAGS: { id: CodexClimate; emoji: string }[] = [
+  { id: 'Temperate', emoji: '🍂' }, { id: 'Mediterranean', emoji: '🫒' }, { id: 'Subtropical', emoji: '🌺' }, { id: 'Tropical', emoji: '🌴' },
+]
+// the library filtered to some Codex climates. The Codex lists some species once per climate, so this looks across
+// every card (not just the one that fits the site best) and keeps one per species, preferring `preferred`'s card.
+export function cardsForClimates(climates: CodexClimate[], preferred: LibSpecies[]) {
+  const best = new Set(preferred.map((s) => s.id))
+  const byName = new Map<string, LibSpecies>()
+  for (const sp of LIBRARY) {
+    if (!sp.climates.some((c) => climates.includes(c))) continue
+    const key = `${sp.name}|${sp.code}`
+    const cur = byName.get(key)
+    if (!cur || (best.has(sp.id) && !best.has(cur.id))) byName.set(key, sp)
+  }
+  return [...byName.values()]
+}
 // Götsch / Codex canopy occupancy per stratum: the most of the land each layer's crowns should cover
 export const OCCUPANCY: Record<Code, number> = { E: 0.2, H: 0.4, M: 0.6, L: 0.8 }
 

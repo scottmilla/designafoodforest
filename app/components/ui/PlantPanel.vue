@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { Code, LibSpecies } from '#shared/types'
+import type { Code, CodexClimate, LibSpecies } from '#shared/types'
 import type { RecipeStep, Scope } from '~/composables/useDesign'
-import { CODES, codexWidthOf, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
+import { cardsForClimates, CLIMATE_TAGS, CODES, codexWidthOf, libById, LIFECYCLE, OCCUPANCY, search, STRATA } from '~/utils/library'
 import { fmtDist, fmtLen, fmtRange, fmtSpan, fromUnit, lenUnit, toUnit } from '~/utils/fmt'
 import { GOALS, GROUP_NAME, suggestDesign, type Goal, type Suggestion } from '~/utils/suggest'
 import { DENSITY, supportCandidates, type Density } from '~/utils/support'
@@ -19,10 +19,17 @@ const goals = ref<Goal[]>([])
 const suggestion = ref<Suggestion | null>(null)
 const scope = ref<Scope>('all')
 
+// climate chips: any number on at once; none on = every climate
+const climates = ref<CodexClimate[]>([])
+function toggleClimate(c: CodexClimate) {
+  climates.value = climates.value.includes(c) ? climates.value.filter((x) => x !== c) : [...climates.value, c]
+}
 const list = computed(() => {
   const fits = d.fits.value
-  return search(d.cards.value, q.value).filter((sp) => {
-    if (!q.value && !d.ui.showAll && fits.get(sp.id)?.level === 'no') return false
+  const base = climates.value.length ? cardsForClimates(climates.value, d.cards.value) : d.cards.value
+  return search(base, q.value).filter((sp) => {
+    // picking a climate is asking to browse it, so its species show even where they won't grow here (marked 🔴)
+    if (!q.value && !climates.value.length && !d.ui.showAll && fits.get(sp.id)?.level === 'no') return false
     if (strata.value && sp.code !== strata.value) return false
     if (kind.value === 'food' && !sp.food) return false
     if (kind.value === 'support' && !sp.support) return false
@@ -251,6 +258,11 @@ const DENSITIES = Object.keys(DENSITY) as Density[]
       <button class="chip tiny" :class="{ on: kind === 'food' }" @click="kind = kind === 'food' ? 'all' : 'food'">🍎 Food</button>
       <button class="chip tiny" :class="{ on: kind === 'support' }" @click="kind = kind === 'support' ? 'all' : 'support'">🌱 Support</button>
     </div>
+    <div class="filters climates" role="group" aria-label="Climate">
+      <button v-for="c in CLIMATE_TAGS" :key="c.id" class="chip tiny" :class="{ on: climates.includes(c.id) }" :aria-pressed="climates.includes(c.id)" :title="`Codex ${c.id.toLowerCase()} species`" @click="toggleClimate(c.id)">{{ c.emoji }} {{ c.id }}</button>
+      <button v-if="climates.length" class="chip tiny" title="Every climate" @click="climates = []">✕</button>
+    </div>
+    <p v-if="climates.length" class="fine tight">Showing {{ climates.join(' + ').toLowerCase() }} species from the Codex, including ones that won't grow at your address (🔴).</p>
     <div class="splist">
       <section v-for="g in grouped" :key="g.c">
         <h4 :style="{ color: STRATA[g.c].color }">{{ g.c }} · {{ STRATA[g.c].name }} <small>{{ STRATA[g.c].share }}</small></h4>
@@ -265,7 +277,7 @@ const DENSITIES = Object.keys(DENSITY) as Density[]
       </section>
       <p v-if="!grouped.length" class="empty">{{ q ? 'Nothing by that name in the Codex.' : 'Nothing in this group grows here.' }}</p>
     </div>
-    <button v-if="!q && hidden" class="linkish" @click="d.ui.showAll = !d.ui.showAll">{{ d.ui.showAll ? 'Hide' : 'Show' }} {{ hidden }} species that won't grow here</button>
+    <button v-if="!q && hidden && !climates.length" class="linkish" @click="d.ui.showAll = !d.ui.showAll">{{ d.ui.showAll ? 'Hide' : 'Show' }} {{ hidden }} species that won't grow here</button>
 
     <template v-if="inDesign.length">
       <h3>Canopy check</h3>
