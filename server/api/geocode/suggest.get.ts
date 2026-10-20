@@ -16,5 +16,6 @@ export default defineEventHandler(async (event): Promise<{ suggestions: GeoSugge
   ])
   const seen = new Set<string>()
   const out = [...local, ...world].filter((s) => !seen.has(s.text) && seen.add(s.text)).slice(0, 6)
+  if (out.length) setResponseHeader(event, 'cache-control', 'public, max-age=300, s-maxage=3600')
   return { suggestions: out }
 })

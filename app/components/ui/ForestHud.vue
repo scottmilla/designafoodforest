@@ -121,6 +121,7 @@ onBeforeUnmount(stopPlay)
         <button class="chip" :class="{ on: d.ui.birdseye }" @click="d.ui.birdseye = !d.ui.birdseye; d.selected.value = null">🦅 Bird's-eye</button>
         <button v-if="d.ui.birdseye" class="chip" :class="{ on: d.ui.lockOn }" :aria-pressed="d.ui.lockOn" title="Lock the camera on the gardener: the arrow keys walk them around under you" @click="d.ui.lockOn = !d.ui.lockOn">🎯 Lock on</button>
       </div>
+      <button class="chip" :class="{ on: d.ui.tractor }" :aria-pressed="d.ui.tractor" title="Hop on or off the tractor (spacebar)" @click="d.ui.tractor = !d.ui.tractor">🚜 {{ d.ui.tractor ? 'Hop off' : 'Tractor' }} <kbd class="key-hint">space</kbd></button>
       <button class="chip" :class="{ on: d.ui.satGround }" @click="d.ui.satGround = !d.ui.satGround">{{ d.ui.satGround ? '🛰 Photo ground' : '🎨 Painted ground' }}</button>
       <button class="chip" :class="{ on: d.ui.harvest }" @click="d.ui.harvest = !d.ui.harvest">📊 Harvest</button>
       <UnitsToggle />
@@ -153,7 +154,8 @@ onBeforeUnmount(stopPlay)
             </button>
           </div>
         </div>
-        <small v-if="d.ui.birdseye" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> walk{{ d.ui.lockOn ? ' (camera follows)' : '' }} · <kbd>Q</kbd><kbd>E</kbd> turn · scroll to zoom · click a plant</small>
+        <small v-if="d.ui.tractor" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> throttle / reverse · <kbd>←</kbd><kbd>→</kbd> steer · <kbd>Q</kbd><kbd>E</kbd> turn the view · <kbd>space</kbd> hop off</small>
+        <small v-else-if="d.ui.birdseye" class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> walk{{ d.ui.lockOn ? ' (camera follows)' : '' }} · <kbd>Q</kbd><kbd>E</kbd> turn · scroll to zoom · click a plant</small>
         <small v-else class="for-mouse"><kbd>↑</kbd><kbd>↓</kbd> walk · <kbd>←</kbd><kbd>→</kbd> turn the camera · scroll to zoom · click a plant</small>
         <small class="for-touch">Tap to walk · ◀ ▶ to spin · tap a plant</small>
       </div>

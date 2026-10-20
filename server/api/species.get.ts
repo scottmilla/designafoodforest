@@ -6,5 +6,7 @@ import { readLibrary } from '../utils/db'
 export default defineEventHandler(async (event) => {
   rateLimit(event, 'species', 60)
   const lib = await readLibrary()
+  // edits in /admin show up within about 30 seconds
+  setResponseHeader(event, 'cache-control', lib.error ? 'no-store' : 'public, max-age=0, s-maxage=30, stale-while-revalidate=300')
   return { source: lib.source, updatedAt: lib.updatedAt, count: lib.species.length, species: lib.species }
 })

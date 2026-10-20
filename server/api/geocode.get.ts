@@ -25,5 +25,7 @@ export default defineEventHandler(async (event): Promise<GeoAnswer> => {
   const found = await geocode(q, { key, country })
   if (!found.length) throw createError({ statusCode: 404, statusMessage: `We couldn't find "${q}". Pick one of the suggestions as you type, add the town, or paste lat, lng.` })
   const [best, ...rest] = found
+  // an address doesn't move: browsers keep it an hour, the CDN a day (keyed on the full URL, query included)
+  setResponseHeader(event, 'cache-control', 'public, max-age=3600, s-maxage=86400')
   return { ...best!, alternatives: rest.slice(0, 4) }
 })

@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 const d = useDesign()
 if (import.meta.dev) {
   ;(window as any).__d = d
+  ;(window as any).__player = usePlayer()
   import('~/utils/suggest').then((m) => ((window as any).__suggest = m.suggestDesign)) // dev only: lets the console drive the engine
 }
 const root = ref<HTMLElement | null>(null)

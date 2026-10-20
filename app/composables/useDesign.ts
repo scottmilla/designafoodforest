@@ -91,7 +91,7 @@ const selected = ref<number | null>(null) // plant index in the 3D scene
 const yields = reactive<Record<string, Partial<YieldCfg>>>({})
 const dash = reactive({ horizon: 20, mode: 'yield' as 'yield' | 'value', density: 0.6 })
 const ui = reactive({
-  labels: true, sat: 0.9, harvest: false, menu: false, showAll: false, mobile: false, forceDay: false, birdseye: false, lockOn: true, autoOrbit: false,
+  labels: true, sat: 0.9, harvest: false, menu: false, showAll: false, mobile: false, forceDay: false, birdseye: false, lockOn: true, tractor: false, autoOrbit: false,
   units: readUnits(), month: null as number | null, // m / ft override ('auto' follows the site's country); month override for the 3D seasons
   recipe: false, support: false, showSupport: true, satGround: true, kml: [] as { pts: LL[]; name: string; area: number }[], saves: false, card: null as string | null, panel: true, crown: 1.1,
 })

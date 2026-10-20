@@ -53,5 +53,7 @@ export default defineEventHandler(async (event): Promise<ClimateResult> => {
     frostFreeDays: c.frostFreeDays, chillHours: c.chillHours, dryMonths: c.dryMonths, hemisphere: lat < 0 ? 'S' : 'N',
     ...(c.estimated ? { estimated: true } : {}),
   }
+  // today's weather changes, so the CDN keeps an answer ten minutes (a minute if the climate had to be guessed)
+  setResponseHeader(event, 'cache-control', c.estimated || !weather ? 'public, s-maxage=60' : 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600')
   return { site, weather }
 })

@@ -24,12 +24,16 @@ export default defineNuxtConfig({
   // serverless functions and serves the rest from its CDN; the preset is detected automatically.
   routeRules: {
     '/': { prerender: true }, // the SPA shell is a static file on the CDN, not a function call
-    '/api/geocode': { swr: 60 * 60 * 24, headers: { 'cache-control': 'public, max-age=3600' } }, // an address doesn't move
-    '/api/climate': { swr: 60 * 10 }, // ten-year climate is cached longer inside the route; today's weather isn't
-    '/api/species': { swr: 30 }, // the library changes only when someone edits it in /admin
+    // The API routes set their own CDN cache headers (see each route). Don't use `swr` / `isr` rules on them: on Vercel
+    // those become ISR functions that never receive the query string (?lat=…, ?q=…) and cache one answer for every
+    // query, which broke the climate and address lookups in production.
     '/api/admin/**': { headers: { 'cache-control': 'no-store' } },
     '/_nuxt/**': { headers: { 'cache-control': 'public, max-age=31536000, immutable' } },
     '/**': { headers: { 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin', 'x-frame-options': 'SAMEORIGIN' } },
+  },
+  nitro: {
+    // the ten-year climate download can take a while when Open-Meteo is busy; give the functions room
+    vercel: { functions: { maxDuration: 30 } },
   },
   app: {
     head: {

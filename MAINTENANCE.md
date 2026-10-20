@@ -101,7 +101,7 @@ What will actually limit you, in the order you'll hit them:
    - First time with a database: open `/admin`, sign in, press **Copy the bundled library into the database**. Until then (or with no database) everyone gets the bundled library, exactly as before.
 4. Deploy. Check: the title loads, an address flies the map, tracing land works, *Step inside* shows the forest.
 
-What `nuxt.config.ts` sets up for it: the app shell is a prerendered static file (fast, no function call), API answers are cached (`routeRules`), hashed assets cache for a year, and basic security headers are sent. `NITRO_PRESET=vercel npm run build` reproduces the Vercel build locally (output in `.vercel/output`, ignored by git).
+What `nuxt.config.ts` sets up for it: the app shell is a prerendered static file (fast, no function call), API answers are cached by Vercel's CDN through `cache-control` headers each route sets (never `swr` / `isr` route rules on the API: on Vercel those become ISR functions that don't receive the query string, which broke the climate and address lookups), functions get up to 30 s (`nitro.vercel.functions.maxDuration`), hashed assets cache for a year, and basic security headers are sent. `NITRO_PRESET=vercel npm run build` reproduces the Vercel build locally (output in `.vercel/output`, ignored by git).
 
 Before going public: confirm you have **permission to publish Byron Austin's Codex data** (`data/SPECIES_DATA_LIBRARY.md` and the derived `shared/library.json` ship in the app's JavaScript), and decide which imagery and geocoding provider you'll license for commercial use (section 3).
 
