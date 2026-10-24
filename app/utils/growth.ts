@@ -5,12 +5,24 @@ type GrowthSpec = Pick<LibSpecies, 'form' | 'heightM' | 'layer' | 'pollard' | 's
 // Managed thinning, by role. Nurse trees (support species, pioneers) are cut out as the canopy closes: by year 10
 // most are gone, which is what they were planted for. Crop trees are thinned only lightly (to give the rest room to
 // fruit), and the survivors' crowns widen to fill the gaps, so the stand ends up dense and mature, not sparse.
-// Plants are chosen for thinning in a regular, staggered order (see `rank` in useDesign's scene), never at random.
-export function thinnedShare(sp: Pick<LibSpecies, 'succession' | 'food' | 'form'>, year: number) {
-  const ramp = (from: number, to: number, max: number) => max * Math.min(1, Math.max(0, (year - from) / (to - from)))
+// Long-lived emergents (climax trees in the top layer, e.g. pecan, oak) are the system's permanent canopy and are
+// never thinned. Plants are chosen for thinning in a regular, staggered order (see `rank` in useDesign's scene), never at random.
+type ThinSpec = Pick<LibSpecies, 'succession' | 'food' | 'form' | 'layer'>
+const ramp = (year: number, from: number, to: number, max: number) => max * Math.min(1, Math.max(0, (year - from) / (to - from)))
+export const isPermanentEmergent = (sp: Pick<LibSpecies, 'succession' | 'layer'>) => sp.layer === 'emergent' && sp.succession === 'climax'
+
+export function thinnedShare(sp: ThinSpec, year: number) {
   if (sp.form === 'herb') return 0 // the herb and ground layer is renewed in place and stays
-  if (!sp.food) return sp.succession === 'climax' ? ramp(5, 20, 0.5) : ramp(2, 10, 0.75)
-  return sp.succession === 'secondary' ? ramp(3, 12, 0.25) : sp.succession === 'climax' ? ramp(6, 25, 0.25) : 0
+  if (isPermanentEmergent(sp)) return 0
+  if (!sp.food) return sp.succession === 'climax' ? ramp(year, 5, 20, 0.5) : ramp(year, 2, 10, 0.75)
+  return sp.succession === 'secondary' ? ramp(year, 3, 12, 0.25) : sp.succession === 'climax' ? ramp(year, 6, 25, 0.25) : 0
+}
+
+// How far (0..1) a crown has spread from its managed width toward its natural spread. Most crowns widen as their
+// neighbours are thinned; permanent emergents widen anyway as they rise above the canopy and are let go.
+export function crownRelease(sp: ThinSpec, year: number) {
+  if (isPermanentEmergent(sp)) return ramp(year, 6, 25, 1)
+  return Math.min(1, thinnedShare(sp, year) / 0.25)
 }
 
 // How big a plant is in a given year of the system (0..1 of mature size).

@@ -4,7 +4,7 @@ import { Color, DoubleSide, Group, IcosahedronGeometry, MeshStandardMaterial, Pl
 import type { Form, LibSpecies } from '#shared/types'
 import { BARK, canopyGeometry, FORMS, hash, leafColour, leafiness, makeInstanced, scratch, setInstance, swayMaterial, trunkGeometry, TRUNK_FRAC, TWIG_BARK, TWIG_FORMS, twigGeometry } from '~/utils/plantGeo'
 import { stepSeason, useSeason } from '~/composables/useSeason'
-import { crownLift, monthsIn, plantGrowth, thinnedShare } from '~/utils/growth'
+import { crownLift, crownRelease, monthsIn, plantGrowth } from '~/utils/growth'
 import { managedWidth } from '~/utils/library'
 
 // The design's plants, drawn as instanced meshes (one per plant form + trunks + fruit). Sizes come straight
@@ -205,7 +205,7 @@ function update(anim: number) {
     // wider than that. `crown` (the slider) trims further, and a crown always leaves room for the nearest same-layer neighbour.
     // as neighbours are thinned out the survivors' crowns widen toward their natural spread and close the gap
     const natural = Math.min(sp.widthM, 3 + sp.widthM * 0.45)
-    const managed = managedWidth(sp) + (natural - managedWidth(sp)) * Math.min(1, thinnedShare(sp, year) / 0.25)
+    const managed = managedWidth(sp) + (natural - managedWidth(sp)) * crownRelease(sp, year)
     const w = Math.max(0.15, Math.min(managed * crown * g * cut, room[i]! * crown))
     const ci = (counters[f] = (counters[f] ?? -1) + 1)
     const cm = canopies[f]!
